@@ -191,7 +191,8 @@ Copy the output; it becomes `SESSION_SECRET`.
 
 1. Push the project to GitHub.
 2. Go to **https://vercel.com/new** and import the repository.
-3. Set **Root Directory** to `attendance-app` (this repo contains the app in that folder).
+3. Leave **Root Directory** as `./` — `package.json` sits at the repository root. (Only set a
+   subfolder here if you later move the app into one.)
 4. Framework preset: **Next.js** (auto-detected).
 5. Add these **Environment Variables** (Production, Preview and Development):
 
