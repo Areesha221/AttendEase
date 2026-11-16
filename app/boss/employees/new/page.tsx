@@ -10,8 +10,8 @@ export const metadata = { title: "Add employee — AttendEase" };
 export default async function NewEmployeePage() {
   await requireBoss();
 
-  const departments = listDepartments();
-  const suggestedCode = nextEmployeeCode();
+  const departments = await listDepartments();
+  const suggestedCode = await nextEmployeeCode();
 
   return (
     <main className="mx-auto w-full max-w-4xl px-5 py-6">

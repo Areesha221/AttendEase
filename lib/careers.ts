@@ -102,11 +102,11 @@ export function parseRequirements(value: string | null | undefined): string[] {
 
 // ---------------- reads ----------------
 
-export function listCountries(): Country[] {
+export async function listCountries(): Promise<Country[]> {
   return all<Country>('SELECT * FROM countries ORDER BY name')
 }
 
-export function getCountry(id: string): Country | undefined {
+export async function getCountry(id: string): Promise<Country | undefined> {
   return get<Country>('SELECT * FROM countries WHERE id = ?', [id])
 }
 
@@ -117,7 +117,7 @@ export type UniversityWithCount = University & {
   program_count: number
 }
 
-export function listUniversities(options: { countryId?: string } = {}): UniversityWithCount[] {
+export async function listUniversities(options: { countryId?: string } = {}): Promise<UniversityWithCount[]> {
   const params: string[] = []
   let where = ''
   if (options.countryId) {
@@ -135,7 +135,7 @@ export function listUniversities(options: { countryId?: string } = {}): Universi
   )
 }
 
-export function getUniversity(id: string): UniversityWithCount | undefined {
+export async function getUniversity(id: string): Promise<UniversityWithCount | undefined> {
   return get<UniversityWithCount>(
     `SELECT u.*, c.name AS country_name, c.code AS country_code, c.flag AS country_flag,
             (SELECT COUNT(*) FROM programs p WHERE p.university_id = u.id) AS program_count
@@ -186,16 +186,16 @@ function programWhere(filters: ProgramFilters): { where: string; params: (string
   return { where, params }
 }
 
-export function listPrograms(filters: ProgramFilters = {}): ProgramRow[] {
+export async function listPrograms(filters: ProgramFilters = {}): Promise<ProgramRow[]> {
   const { where, params } = programWhere(filters)
   const limit = filters.limit ?? 300
   return all<ProgramRow>(`${PROGRAM_SELECT} ${where} ORDER BY p.deadline IS NULL, p.deadline, u.name LIMIT ${limit}`, params)
 }
 
 /** Total programs matching a filter set, ignoring any display limit. */
-export function countPrograms(filters: ProgramFilters = {}): number {
+export async function countPrograms(filters: ProgramFilters = {}): Promise<number> {
   const { where, params } = programWhere(filters)
-  const row = get<{ n: number }>(
+  const row = await get<{ n: number }>(
     `SELECT COUNT(*) AS n FROM programs p
      JOIN universities u ON u.id = p.university_id
      JOIN countries c ON c.id = u.country_id
@@ -205,22 +205,24 @@ export function countPrograms(filters: ProgramFilters = {}): number {
   return row?.n ?? 0
 }
 
-export function getProgram(id: string): ProgramRow | undefined {
+export async function getProgram(id: string): Promise<ProgramRow | undefined> {
   return get<ProgramRow>(`${PROGRAM_SELECT} WHERE p.id = ?`, [id])
 }
 
-export function listDisciplines(): string[] {
-  return all<{ discipline: string }>('SELECT DISTINCT discipline FROM programs ORDER BY discipline').map((row) => row.discipline)
+export async function listDisciplines(): Promise<string[]> {
+  return (await all<{ discipline: string }>('SELECT DISTINCT discipline FROM programs ORDER BY discipline')).map(
+    (row) => row.discipline,
+  )
 }
 
-export function listLevels(): string[] {
-  return all<{ level: string }>('SELECT DISTINCT level FROM programs ORDER BY level').map((row) => row.level)
+export async function listLevels(): Promise<string[]> {
+  return (await all<{ level: string }>('SELECT DISTINCT level FROM programs ORDER BY level')).map((row) => row.level)
 }
 
 /** Programs whose deadline falls within the next `days` days, soonest first. */
-export function listUpcomingDeadlines(days = 180, limit = 8): ProgramRow[] {
+export async function listUpcomingDeadlines(days = 180, limit = 8): Promise<ProgramRow[]> {
   const today = toWorkDate()
-  return listPrograms({ limit: 500 })
+  return (await listPrograms({ limit: 500 }))
     .filter((program) => {
       const left = daysUntil(program.deadline, today)
       return left !== null && left >= 0 && left <= days
@@ -231,13 +233,13 @@ export function listUpcomingDeadlines(days = 180, limit = 8): ProgramRow[] {
 
 // ---------------- saved / shortlist ----------------
 
-export function listSavedProgramIds(profileName: string): string[] {
-  return all<{ program_id: string }>('SELECT program_id FROM saved_programs WHERE profile_name = ?', [profileName]).map(
-    (row) => row.program_id,
-  )
+export async function listSavedProgramIds(profileName: string): Promise<string[]> {
+  return (
+    await all<{ program_id: string }>('SELECT program_id FROM saved_programs WHERE profile_name = ?', [profileName])
+  ).map((row) => row.program_id)
 }
 
-export function listSavedPrograms(profileName: string): ProgramRow[] {
+export async function listSavedPrograms(profileName: string): Promise<ProgramRow[]> {
   return all<ProgramRow>(
     `${PROGRAM_SELECT}
      JOIN saved_programs s ON s.program_id = p.id
@@ -247,8 +249,8 @@ export function listSavedPrograms(profileName: string): ProgramRow[] {
   )
 }
 
-export function isProgramSaved(profileName: string, programId: string): boolean {
-  const row = get<{ id: string }>('SELECT id FROM saved_programs WHERE profile_name = ? AND program_id = ?', [
+export async function isProgramSaved(profileName: string, programId: string): Promise<boolean> {
+  const row = await get<{ id: string }>('SELECT id FROM saved_programs WHERE profile_name = ? AND program_id = ?', [
     profileName,
     programId,
   ])
@@ -256,12 +258,12 @@ export function isProgramSaved(profileName: string, programId: string): boolean 
 }
 
 /** Add or remove a program from a profile's shortlist. Returns the new state. */
-export function toggleSavedProgram(profileName: string, programId: string): boolean {
-  if (isProgramSaved(profileName, programId)) {
-    run('DELETE FROM saved_programs WHERE profile_name = ? AND program_id = ?', [profileName, programId])
+export async function toggleSavedProgram(profileName: string, programId: string): Promise<boolean> {
+  if (await isProgramSaved(profileName, programId)) {
+    await run('DELETE FROM saved_programs WHERE profile_name = ? AND program_id = ?', [profileName, programId])
     return false
   }
-  run('INSERT INTO saved_programs (id, profile_name, program_id, created_at) VALUES (?, ?, ?, ?)', [
+  await run('INSERT INTO saved_programs (id, profile_name, program_id, created_at) VALUES (?, ?, ?, ?)', [
     newId('saved'),
     profileName,
     programId,
@@ -435,7 +437,7 @@ function scoreProgram(program: ProgramRow, profile: StudentProfile): Suggestion 
 }
 
 /** Rank every program against a profile and return the best matches. */
-export function suggestPrograms(profile: StudentProfile, limit = 12): Suggestion[] {
+export async function suggestPrograms(profile: StudentProfile, limit = 12): Promise<Suggestion[]> {
   const hasAnyCriteria = Boolean(
     profile.discipline ||
       profile.level ||
@@ -446,7 +448,7 @@ export function suggestPrograms(profile: StudentProfile, limit = 12): Suggestion
       typeof profile.percentage === 'number',
   )
 
-  const scored = listPrograms({ limit: 500 }).map((program) => scoreProgram(program, profile))
+  const scored = (await listPrograms({ limit: 500 })).map((program) => scoreProgram(program, profile))
 
   if (!hasAnyCriteria) return []
 

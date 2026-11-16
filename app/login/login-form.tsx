@@ -4,32 +4,14 @@ import { useActionState, useState } from "react";
 import { AlertTriangle, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
 import PasswordInput from "@/components/password-input";
 import { loginAction, type LoginState } from "@/lib/auth";
-import { SHOW_DEMO_ACCOUNTS } from "@/lib/demo-config";
 
 type Role = "employee" | "boss";
-
-const DEMO_ACCOUNTS: Record<Role, { email: string; password: string; label: string; note: string }[]> = {
-  employee: [
-    { email: "ali@demo.com", password: "employee123", label: "Ali Raza", note: "Web Development • 2 absences, 3 late days" },
-    { email: "ayesha@demo.com", password: "employee123", label: "Ayesha Khan", note: "Design • on leave 10–11 Nov" },
-    { email: "bilal@demo.com", password: "employee123", label: "Bilal Ahmed", note: "Sales • has an offline (pending) event" },
-    { email: "sana@demo.com", password: "employee123", label: "Sana Malik", note: "HR • leave request was rejected" },
-  ],
-  boss: [
-    { email: "boss@demo.com", password: "boss123", label: "Hamza Sheikh", note: "Managing Director — full access" },
-  ],
-};
 
 export default function LoginForm({ initialRole }: { initialRole: Role }) {
   const [role, setRole] = useState<Role>(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [state, formAction, pending] = useActionState<LoginState, FormData>(loginAction, undefined);
-
-  function fillAccount(account: { email: string; password: string }) {
-    setEmail(account.email);
-    setPassword(account.password);
-  }
 
   return (
     <div className="w-full max-w-md">
@@ -100,31 +82,6 @@ export default function LoginForm({ initialRole }: { initialRole: Role }) {
           {pending ? "Signing in…" : "Sign in"}
         </button>
       </form>
-
-      {SHOW_DEMO_ACCOUNTS && (
-        <div className="mt-5">
-          <p className="section-title">Demo accounts — tap to fill</p>
-          <div className="mt-2 space-y-2">
-          {DEMO_ACCOUNTS[role].map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              onClick={() => fillAccount(account)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-left transition hover:border-indigo-300 hover:bg-indigo-50/40"
-            >
-              <span>
-                <span className="block text-sm font-semibold text-slate-800">{account.label}</span>
-                <span className="block font-mono text-[11px] text-slate-500">{account.email}</span>
-                <span className="block text-[11px] text-slate-500">{account.note}</span>
-              </span>
-              <span className="shrink-0 rounded-lg bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
-                Fill
-              </span>
-            </button>
-          ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

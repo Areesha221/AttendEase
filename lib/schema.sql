@@ -1,6 +1,6 @@
 -- ============================================================
 -- Attendance & Workforce Management Platform - Database Schema
--- SQLite (via Node's built-in node:sqlite)
+-- SQLite / libSQL (Turso in production, local file in development)
 -- Times are stored as Asia/Karachi (PKT, UTC+05:00) strings.
 -- ============================================================
 

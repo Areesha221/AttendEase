@@ -26,16 +26,16 @@ import {
 
 const HASH_ROUNDS = 10
 
-function audit(session: SessionPayload, action: string, entityId: string, details: string): void {
-  run(
+async function audit(session: SessionPayload, action: string, entityId: string, details: string): Promise<void> {
+  await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, ?, 'employee', ?, ?, ?)`,
     [newId('audit'), session.userId, session.name, action, entityId, details, toServerTime()],
   )
 }
 
-function notify(userId: string, title: string, body: string, kind: string): void {
-  run(
+async function notify(userId: string, title: string, body: string, kind: string): Promise<void> {
+  await run(
     `INSERT INTO notifications (id, user_id, title, body, kind, is_read, created_at)
      VALUES (?, ?, ?, ?, ?, 0, ?)`,
     [newId('notif'), userId, title, body, kind, toServerTime()],
@@ -70,10 +70,10 @@ export async function createEmployeeAction(
   const input = result.data
 
   const fieldErrors: Record<string, string> = {}
-  if (get<{ id: string }>('SELECT id FROM users WHERE lower(email) = ?', [input.email])) {
+  if (await get<{ id: string }>('SELECT id FROM users WHERE lower(email) = ?', [input.email])) {
     fieldErrors.email = 'That email is already in use.'
   }
-  if (get<{ id: string }>('SELECT id FROM employees WHERE employee_code = ?', [input.employeeCode])) {
+  if (await get<{ id: string }>('SELECT id FROM employees WHERE employee_code = ?', [input.employeeCode])) {
     fieldErrors.employee_code = 'That employee code is already in use.'
   }
   if (Object.keys(fieldErrors).length > 0) {
@@ -84,18 +84,18 @@ export async function createEmployeeAction(
   const userId = newId('usr')
   const employeeId = newId('emp')
 
-  transaction(() => {
-    run(
-      `INSERT INTO users (id, email, password_hash, role, is_active, created_at)
-       VALUES (?, ?, ?, 'employee', ?, ?)`,
-      [userId, input.email, bcrypt.hashSync(input.password, HASH_ROUNDS), input.status === 'active' ? 1 : 0, now],
-    )
-    run(
-      `INSERT INTO employees (id, user_id, employee_code, full_name, cnic, phone, department, job_title,
-         joining_date, photo, status, monthly_salary, annual_leave_allowance, carry_forward_leave,
-         consent, consent_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, 1, ?, ?)`,
-      [
+  await transaction(async (tx) => {
+    await tx.execute({
+      sql: `INSERT INTO users (id, email, password_hash, role, is_active, created_at)
+            VALUES (?, ?, ?, 'employee', ?, ?)`,
+      args: [userId, input.email, bcrypt.hashSync(input.password, HASH_ROUNDS), input.status === 'active' ? 1 : 0, now],
+    })
+    await tx.execute({
+      sql: `INSERT INTO employees (id, user_id, employee_code, full_name, cnic, phone, department, job_title,
+              joining_date, photo, status, monthly_salary, annual_leave_allowance, carry_forward_leave,
+              consent, consent_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, 0, 1, ?, ?)`,
+      args: [
         employeeId,
         userId,
         input.employeeCode,
@@ -111,10 +111,10 @@ export async function createEmployeeAction(
         now,
         now,
       ],
-    )
+    })
   })
 
-  audit(session, 'create', employeeId, `Added employee ${input.fullName} (${input.employeeCode})`)
+  await audit(session, 'create', employeeId, `Added employee ${input.fullName} (${input.employeeCode})`)
   revalidateEmployee(employeeId)
   redirect(`/boss/employees/${employeeId}`)
 }
@@ -128,7 +128,7 @@ export async function updateEmployeeAction(
   const session = await requireBoss()
 
   const employeeId = String(formData.get('employee_id') ?? '')
-  const employee = get<{ id: string; user_id: string | null }>(
+  const employee = await get<{ id: string; user_id: string | null }>(
     'SELECT id, user_id FROM employees WHERE id = ?',
     [employeeId],
   )
@@ -141,9 +141,9 @@ export async function updateEmployeeAction(
   const input = result.data
 
   const fieldErrors: Record<string, string> = {}
-  const emailOwner = get<{ id: string }>('SELECT id FROM users WHERE lower(email) = ?', [input.email])
+  const emailOwner = await get<{ id: string }>('SELECT id FROM users WHERE lower(email) = ?', [input.email])
   if (emailOwner && emailOwner.id !== employee.user_id) fieldErrors.email = 'That email is already in use.'
-  const codeOwner = get<{ id: string }>('SELECT id FROM employees WHERE employee_code = ?', [input.employeeCode])
+  const codeOwner = await get<{ id: string }>('SELECT id FROM employees WHERE employee_code = ?', [input.employeeCode])
   if (codeOwner && codeOwner.id !== employeeId) {
     fieldErrors.employee_code = 'That employee code is already in use.'
   }
@@ -151,13 +151,13 @@ export async function updateEmployeeAction(
     return { error: 'Please fix the highlighted fields.', fieldErrors }
   }
 
-  transaction(() => {
-    run(
-      `UPDATE employees
-       SET employee_code = ?, full_name = ?, cnic = ?, phone = ?, department = ?, job_title = ?,
-           joining_date = ?, status = ?, monthly_salary = ?, annual_leave_allowance = ?
-       WHERE id = ?`,
-      [
+  await transaction(async (tx) => {
+    await tx.execute({
+      sql: `UPDATE employees
+            SET employee_code = ?, full_name = ?, cnic = ?, phone = ?, department = ?, job_title = ?,
+                joining_date = ?, status = ?, monthly_salary = ?, annual_leave_allowance = ?
+            WHERE id = ?`,
+      args: [
         input.employeeCode,
         input.fullName,
         input.cnic || null,
@@ -170,24 +170,23 @@ export async function updateEmployeeAction(
         input.annualLeaveAllowance,
         employeeId,
       ],
-    )
+    })
 
     if (employee.user_id) {
-      run('UPDATE users SET email = ?, is_active = ? WHERE id = ?', [
-        input.email,
-        input.status === 'active' ? 1 : 0,
-        employee.user_id,
-      ])
+      await tx.execute({
+        sql: 'UPDATE users SET email = ?, is_active = ? WHERE id = ?',
+        args: [input.email, input.status === 'active' ? 1 : 0, employee.user_id],
+      })
       if (input.password) {
-        run('UPDATE users SET password_hash = ? WHERE id = ?', [
-          bcrypt.hashSync(input.password, HASH_ROUNDS),
-          employee.user_id,
-        ])
+        await tx.execute({
+          sql: 'UPDATE users SET password_hash = ? WHERE id = ?',
+          args: [bcrypt.hashSync(input.password, HASH_ROUNDS), employee.user_id],
+        })
       }
     }
   })
 
-  audit(session, 'update', employeeId, `Updated employee ${input.fullName} (${input.employeeCode})`)
+  await audit(session, 'update', employeeId, `Updated employee ${input.fullName} (${input.employeeCode})`)
   revalidateEmployee(employeeId)
   redirect(`/boss/employees/${employeeId}`)
 }
@@ -201,29 +200,32 @@ export async function setEmployeeStatusAction(formData: FormData): Promise<void>
   const next = String(formData.get('status') ?? '')
   if (!['active', 'inactive'].includes(next)) return
 
-  const employee = get<EmployeeRef>(
+  const employee = await get<EmployeeRef>(
     'SELECT id, user_id, full_name, employee_code FROM employees WHERE id = ?',
     [employeeId],
   )
   if (!employee) return
   if (employee.user_id === session.userId) return // never lock yourself out
 
-  transaction(() => {
-    run('UPDATE employees SET status = ? WHERE id = ?', [next, employeeId])
+  await transaction(async (tx) => {
+    await tx.execute({ sql: 'UPDATE employees SET status = ? WHERE id = ?', args: [next, employeeId] })
     if (employee.user_id) {
-      run('UPDATE users SET is_active = ? WHERE id = ?', [next === 'active' ? 1 : 0, employee.user_id])
+      await tx.execute({
+        sql: 'UPDATE users SET is_active = ? WHERE id = ?',
+        args: [next === 'active' ? 1 : 0, employee.user_id],
+      })
     }
   })
 
   const activating = next === 'active'
-  audit(
+  await audit(
     session,
     activating ? 'reactivate' : 'deactivate',
     employeeId,
     `${activating ? 'Reactivated' : 'Deactivated'} ${employee.full_name} (${employee.employee_code})`,
   )
   if (employee.user_id) {
-    notify(
+    await notify(
       employee.user_id,
       activating ? 'Account reactivated' : 'Account deactivated',
       activating
@@ -244,22 +246,26 @@ export async function deleteEmployeeAction(formData: FormData): Promise<void> {
   const confirm = String(formData.get('confirm') ?? '').trim().toUpperCase()
   if (confirm !== 'DELETE') return
 
-  const employee = get<EmployeeRef>(
+  const employee = await get<EmployeeRef>(
     'SELECT id, user_id, full_name, employee_code FROM employees WHERE id = ?',
     [employeeId],
   )
   if (!employee) return
   if (employee.user_id === session.userId) return // never delete yourself
 
-  transaction(() => {
-    run('DELETE FROM attendance WHERE employee_id = ?', [employeeId])
-    run('DELETE FROM leaves WHERE employee_id = ?', [employeeId])
-    if (employee.user_id) run('DELETE FROM notifications WHERE user_id = ?', [employee.user_id])
-    run('DELETE FROM employees WHERE id = ?', [employeeId])
-    if (employee.user_id) run('DELETE FROM users WHERE id = ?', [employee.user_id])
+  await transaction(async (tx) => {
+    await tx.execute({ sql: 'DELETE FROM attendance WHERE employee_id = ?', args: [employeeId] })
+    await tx.execute({ sql: 'DELETE FROM leaves WHERE employee_id = ?', args: [employeeId] })
+    if (employee.user_id) {
+      await tx.execute({ sql: 'DELETE FROM notifications WHERE user_id = ?', args: [employee.user_id] })
+    }
+    await tx.execute({ sql: 'DELETE FROM employees WHERE id = ?', args: [employeeId] })
+    if (employee.user_id) {
+      await tx.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [employee.user_id] })
+    }
   })
 
-  audit(
+  await audit(
     session,
     'delete',
     employeeId,
@@ -281,7 +287,7 @@ export async function resetEmployeePasswordAction(
   const password = String(formData.get('password') ?? '')
   const confirm = String(formData.get('confirm') ?? '')
 
-  const employee = get<{ id: string; user_id: string | null; full_name: string }>(
+  const employee = await get<{ id: string; user_id: string | null; full_name: string }>(
     'SELECT id, user_id, full_name FROM employees WHERE id = ?',
     [employeeId],
   )
@@ -290,9 +296,9 @@ export async function resetEmployeePasswordAction(
   const error = validateNewPassword(password, confirm)
   if (error) return { error }
 
-  run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, HASH_ROUNDS), employee.user_id])
-  audit(session, 'update', employeeId, `Reset password for ${employee.full_name}`)
-  notify(employee.user_id, 'Password changed', 'An administrator reset your password. Use the new password to sign in.', 'warning')
+  await run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, HASH_ROUNDS), employee.user_id])
+  await audit(session, 'update', employeeId, `Reset password for ${employee.full_name}`)
+  await notify(employee.user_id, 'Password changed', 'An administrator reset your password. Use the new password to sign in.', 'warning')
   revalidateEmployee(employeeId)
   return { success: `Password updated for ${employee.full_name}.` }
 }
@@ -309,7 +315,7 @@ export async function changeOwnPasswordAction(
   const password = String(formData.get('password') ?? '')
   const confirm = String(formData.get('confirm') ?? '')
 
-  const user = get<{ id: string; password_hash: string }>(
+  const user = await get<{ id: string; password_hash: string }>(
     'SELECT id, password_hash FROM users WHERE id = ?',
     [session.userId],
   )
@@ -326,7 +332,7 @@ export async function changeOwnPasswordAction(
     return { error: 'Choose a password different from your current one.' }
   }
 
-  run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, HASH_ROUNDS), session.userId])
-  audit(session, 'update', session.employeeId || session.userId, 'Changed own password')
+  await run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(password, HASH_ROUNDS), session.userId])
+  await audit(session, 'update', session.employeeId || session.userId, 'Changed own password')
   return { success: 'Your password has been changed.' }
 }

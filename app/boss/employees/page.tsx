@@ -14,8 +14,8 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
   const search = typeof params.search === "string" ? params.search : "";
   const department = typeof params.department === "string" ? params.department : "all";
   const includeInactive = params.inactive === "1";
-  const departments = listDepartments();
-  const rows = getEmployeeDirectory({ search: search || undefined, department, includeInactive });
+  const departments = await listDepartments();
+  const rows = await getEmployeeDirectory({ search: search || undefined, department, includeInactive });
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6">

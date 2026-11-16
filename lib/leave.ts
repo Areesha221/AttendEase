@@ -16,7 +16,7 @@ const isDate = (value: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(value)
 
 export async function createLeaveAction(_prev: LeaveFormState, formData: FormData): Promise<LeaveFormState> {
   const session = await requireEmployee()
-  const employee = getEmployeeByUserId(session.userId)
+  const employee = await getEmployeeByUserId(session.userId)
   if (!employee) return { error: 'No employee profile is linked to this account.' }
 
   const type = String(formData.get('type') ?? '') as LeaveType
@@ -33,15 +33,15 @@ export async function createLeaveAction(_prev: LeaveFormState, formData: FormDat
   if (startDate < today) return { error: 'Leave cannot start in the past. Choose today or a future date.' }
   if (daysBetweenInclusive(startDate, endDate) > 60) return { error: 'A single request cannot exceed 60 days.' }
 
-  const settings = getSettings()
-  const holidaySet = new Set(getHolidaysBetween(startDate, endDate).map((row) => row.date))
+  const settings = await getSettings()
+  const holidaySet = new Set((await getHolidaysBetween(startDate, endDate)).map((row) => row.date))
   const dates = eachDate(startDate, endDate)
   const days = leaveDaysExcludingWeekends(dates, settings.weekend_days, holidaySet)
   if (days === 0) {
     return { error: 'Those dates fall entirely on weekends or public holidays.' }
   }
 
-  const overlap = get<{ id: string }>(
+  const overlap = await get<{ id: string }>(
     `SELECT id FROM leaves
      WHERE employee_id = ? AND status IN ('pending', 'submitted', 'approved')
        AND NOT (end_date < ? OR start_date > ?)`,
@@ -50,7 +50,7 @@ export async function createLeaveAction(_prev: LeaveFormState, formData: FormDat
   if (overlap) return { error: 'You already have a leave request covering those dates.' }
 
   if (type === 'annual') {
-    const row = get<{ used: number }>(
+    const row = await get<{ used: number }>(
       `SELECT COALESCE(SUM(days), 0) AS used FROM leaves
        WHERE employee_id = ? AND type = 'annual' AND status IN ('pending', 'submitted', 'approved')
          AND start_date LIKE ?`,
@@ -64,13 +64,13 @@ export async function createLeaveAction(_prev: LeaveFormState, formData: FormDat
 
   const now = toServerTime()
   const leaveId = newId('leave')
-  run(
+  await run(
     `INSERT INTO leaves (id, employee_id, type, start_date, end_date, days, reason, emergency, status, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?)`,
     [leaveId, employee.id, type, startDate, endDate, days, reason || null, emergency ? 1 : 0, now],
   )
 
-  run(
+  await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, 'create', 'leave', ?, ?, ?)`,
     [
@@ -83,7 +83,7 @@ export async function createLeaveAction(_prev: LeaveFormState, formData: FormDat
     ],
   )
 
-  run(
+  await run(
     `INSERT INTO notifications (id, user_id, title, body, kind, is_read, created_at)
      VALUES (?, NULL, ?, ?, ?, 0, ?)`,
     [
@@ -104,19 +104,19 @@ export async function createLeaveAction(_prev: LeaveFormState, formData: FormDat
 
 export async function cancelLeaveAction(formData: FormData): Promise<void> {
   const session = await requireEmployee()
-  const employee = getEmployeeByUserId(session.userId)
+  const employee = await getEmployeeByUserId(session.userId)
   if (!employee) return
 
   const leaveId = String(formData.get('leave_id') ?? '')
-  const row = get<{ id: string; status: string }>(
+  const row = await get<{ id: string; status: string }>(
     'SELECT id, status FROM leaves WHERE id = ? AND employee_id = ?',
     [leaveId, employee.id],
   )
   if (!row || !['pending', 'submitted'].includes(row.status)) return
 
   const now = toServerTime()
-  run(`UPDATE leaves SET status = 'cancelled', comment = ? WHERE id = ?`, ['Cancelled by employee', leaveId])
-  run(
+  await run(`UPDATE leaves SET status = 'cancelled', comment = ? WHERE id = ?`, ['Cancelled by employee', leaveId])
+  await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, 'update', 'leave', ?, 'Cancelled by employee', ?)`,
     [newId('audit'), session.userId, employee.full_name, leaveId, now],

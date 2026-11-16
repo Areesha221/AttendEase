@@ -8,7 +8,7 @@ import { requireEmployee } from "@/lib/session";
 
 export default async function CheckInPage() {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -18,9 +18,9 @@ export default async function CheckInPage() {
     );
   }
 
-  const settings = getSettings();
+  const settings = await getSettings();
   const workDate = toWorkDate();
-  const events = getEventsForDate(employee.id, workDate);
+  const events = await getEventsForDate(employee.id, workDate);
   const checkIn = events.find((event) => event.type === "check_in") ?? null;
   const checkOut = events.find((event) => event.type === "check_out") ?? null;
 

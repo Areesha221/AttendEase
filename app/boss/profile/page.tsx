@@ -6,8 +6,8 @@ import { requireBoss } from "@/lib/session";
 
 export default async function BossProfilePage() {
   const session = await requireBoss();
-  const user = getUserById(session.userId);
-  const settings = getSettings();
+  const user = await getUserById(session.userId);
+  const settings = await getSettings();
 
   const rows = [
     { label: "Email", value: user?.email ?? "—", mono: true },

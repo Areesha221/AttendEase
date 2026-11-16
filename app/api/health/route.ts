@@ -9,10 +9,10 @@ export const dynamic = 'force-dynamic'
  * Next.js server runtime and shows how much demo data is loaded.
  */
 export async function GET() {
-  const settings = get<{ office_name: string; radius_m: number; work_start: string; work_end: string }>(
+  const settings = await get<{ office_name: string; radius_m: number; work_start: string; work_end: string }>(
     'SELECT office_name, radius_m, work_start, work_end FROM settings WHERE id = 1',
   )
-  const counts = get<{
+  const counts = await get<{
     employees: number
     attendance: number
     leaves: number
@@ -29,7 +29,7 @@ export async function GET() {
         (SELECT COUNT(*) FROM universities) AS universities,
         (SELECT COUNT(*) FROM programs) AS programs`)
 
-  const upcomingDeadlines = all<{ name: string; deadline: string }>(
+  const upcomingDeadlines = await all<{ name: string; deadline: string }>(
     `SELECT name, deadline FROM programs WHERE deadline >= date('now') ORDER BY deadline LIMIT 5`,
   )
 

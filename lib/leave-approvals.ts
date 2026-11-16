@@ -30,7 +30,7 @@ export async function decideLeaveAction(formData: FormData): Promise<void> {
 
   if (!leaveId || !['approve', 'reject'].includes(decision)) return
 
-  const leave = get<LeaveRow>(
+  const leave = await get<LeaveRow>(
     'SELECT id, employee_id, type, start_date, end_date, days, status FROM leaves WHERE id = ?',
     [leaveId],
   )
@@ -39,7 +39,7 @@ export async function decideLeaveAction(formData: FormData): Promise<void> {
   const status = decision === 'approve' ? 'approved' : 'rejected'
   const now = toServerTime()
 
-  run(`UPDATE leaves SET status = ?, approver_id = ?, approved_at = ?, comment = ? WHERE id = ?`, [
+  await run(`UPDATE leaves SET status = ?, approver_id = ?, approved_at = ?, comment = ? WHERE id = ?`, [
     status,
     session.userId,
     now,
@@ -47,7 +47,7 @@ export async function decideLeaveAction(formData: FormData): Promise<void> {
     leaveId,
   ])
 
-  run(
+  await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, ?, 'leave', ?, ?, ?)`,
     [
@@ -61,12 +61,12 @@ export async function decideLeaveAction(formData: FormData): Promise<void> {
     ],
   )
 
-  const employee = get<{ user_id: string | null; full_name: string }>(
+  const employee = await get<{ user_id: string | null; full_name: string }>(
     'SELECT user_id, full_name FROM employees WHERE id = ?',
     [leave.employee_id],
   )
 
-  run(
+  await run(
     `INSERT INTO notifications (id, user_id, title, body, kind, is_read, created_at)
      VALUES (?, ?, ?, ?, ?, 0, ?)`,
     [

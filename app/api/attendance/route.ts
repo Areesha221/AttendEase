@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Only employee accounts can record attendance.' }, { status: 403 })
   }
 
-  const employee = getEmployeeByUserId(session.userId)
+  const employee = await getEmployeeByUserId(session.userId)
   if (!employee) {
     return NextResponse.json({ error: 'No employee profile is linked to this account.' }, { status: 400 })
   }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No attendance events were provided.' }, { status: 400 })
   }
 
-  const settings = getSettings()
+  const settings = await getSettings()
   const now = new Date()
   const serverTime = toServerTime(now)
   const workDate = toWorkDate(now)
@@ -134,13 +134,13 @@ export async function POST(request: Request) {
       continue
     }
 
-    const duplicate = get<{ id: string }>('SELECT id FROM attendance WHERE event_id = ?', [eventId])
+    const duplicate = await get<{ id: string }>('SELECT id FROM attendance WHERE event_id = ?', [eventId])
     if (duplicate) {
       results.push({ eventId, type, status: 'duplicate', message: 'This event was already saved.' })
       continue
     }
 
-    const dayEvents = getEventsForDate(employee.id, eventWorkDate).filter(
+    const dayEvents = (await getEventsForDate(employee.id, eventWorkDate)).filter(
       (row) => row.review_status !== 'rejected',
     )
     const hasCheckIn = dayEvents.some((row) => row.type === 'check_in')
@@ -183,7 +183,7 @@ export async function POST(request: Request) {
     // queue, land in the boss review queue.
     const reviewStatus = verification === 'flagged' || offlineCapture ? 'pending' : 'not_required'
 
-    run(
+    await run(
       `INSERT INTO attendance
          (id, event_id, employee_id, type, work_date, server_time, device_time, photo,
           latitude, longitude, accuracy_m, distance_m, location_status, sync_status, verification, review_status, reason, created_at)
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
       ],
     )
 
-    run(
+    await run(
       `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
        VALUES (?, ?, ?, 'create', 'attendance', ?, ?, ?)`,
       [
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
   }
 
   if (acceptedCount > 0) {
-    run(
+    await run(
       `INSERT INTO notifications (id, user_id, title, body, kind, is_read, created_at)
        VALUES (?, NULL, ?, ?, ?, 0, ?)`,
       [

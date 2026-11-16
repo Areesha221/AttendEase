@@ -26,14 +26,14 @@ export default async function CareersDiscoverPage({ searchParams }: PageProps<"/
   const level = first(params.level);
   const discipline = first(params.discipline);
 
-  const countries = listCountries();
-  const levels = listLevels();
-  const disciplines = listDisciplines();
-  const programs = listPrograms({ search, countryId, level, discipline, limit: 60 });
-  const totalPrograms = countPrograms();
-  const matchedPrograms = countPrograms({ search, countryId, level, discipline });
-  const savedIds = new Set(listSavedProgramIds(session.userId));
-  const deadlines = listUpcomingDeadlines(180, 6);
+  const countries = await listCountries();
+  const levels = await listLevels();
+  const disciplines = await listDisciplines();
+  const programs = await listPrograms({ search, countryId, level, discipline, limit: 60 });
+  const totalPrograms = await countPrograms();
+  const matchedPrograms = await countPrograms({ search, countryId, level, discipline });
+  const savedIds = new Set(await listSavedProgramIds(session.userId));
+  const deadlines = await listUpcomingDeadlines(180, 6);
 
   const hasFilters = Boolean(search || countryId || level || discipline);
 

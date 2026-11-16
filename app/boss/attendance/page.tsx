@@ -24,7 +24,7 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
   const filter = typeof params.filter === "string" ? params.filter : "all";
   const allDates = filter === "review" && params.scope === "all";
 
-  const events = allDates ? listReviewQueue(200) : listDayAttendance(date);
+  const events = allDates ? await listReviewQueue(200) : await listDayAttendance(date);
   const filtered = events.filter((event) => {
     if (filter === "review") return event.review_status === "pending";
     if (filter === "flagged") return event.verification === "flagged" || event.location_status === "outside";

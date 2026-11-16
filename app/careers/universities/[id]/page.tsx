@@ -9,11 +9,11 @@ export default async function UniversityDetailPage({ params }: PageProps<"/caree
   const session = await requireSession();
   const { id } = await params;
 
-  const university = getUniversity(id);
+  const university = await getUniversity(id);
   if (!university) notFound();
 
-  const programs = listPrograms({ universityId: id, limit: 100 });
-  const savedIds = new Set(listSavedProgramIds(session.userId));
+  const programs = await listPrograms({ universityId: id, limit: 100 });
+  const savedIds = new Set(await listSavedProgramIds(session.userId));
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6">

@@ -9,7 +9,7 @@ import { requireEmployee } from "@/lib/session";
 
 export default async function ProfilePage() {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -19,9 +19,9 @@ export default async function ProfilePage() {
     );
   }
 
-  const settings = getSettings();
-  const balance = getLeaveBalance(employee.id);
-  const user = getUserById(session.userId);
+  const settings = await getSettings();
+  const balance = await getLeaveBalance(employee.id);
+  const user = await getUserById(session.userId);
 
   const rows = [
     { label: "Employee code", value: employee.employee_code, mono: true },

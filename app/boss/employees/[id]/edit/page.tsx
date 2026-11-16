@@ -11,11 +11,11 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
   await requireBoss();
 
   const { id } = await params;
-  const employee = getEmployeeById(id);
+  const employee = await getEmployeeById(id);
   if (!employee) notFound();
 
-  const user = employee.user_id ? getUserById(employee.user_id) : undefined;
-  const departments = listDepartments();
+  const user = employee.user_id ? await getUserById(employee.user_id) : undefined;
+  const departments = await listDepartments();
 
   return (
     <main className="mx-auto w-full max-w-4xl px-5 py-6">

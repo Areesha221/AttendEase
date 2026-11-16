@@ -9,9 +9,16 @@
     "lint": "eslint",
     "seed": "node scripts/seed.mjs",
     "db:reset": "node scripts/seed.mjs",
-    "db:check": "node scripts/db-check.mjs"
+    "db:check": "node scripts/db-check.mjs",
+    "db:migrate": "node scripts/migrate-to-turso.mjs",
+    "db:boss-password": "node scripts/set-boss-password.mjs",
+    "db:sample": "node scripts/generate-sample-attendance.mjs"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.72.0",

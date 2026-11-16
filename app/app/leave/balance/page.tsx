@@ -9,7 +9,7 @@ import { listEmployeeLeaves } from "@/lib/queries";
 
 export default async function LeaveBalancePage() {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -20,8 +20,8 @@ export default async function LeaveBalancePage() {
   }
 
   const year = toWorkDate().slice(0, 4);
-  const balance = getLeaveBalance(employee.id, year);
-  const requests = listEmployeeLeaves(employee.id, year);
+  const balance = await getLeaveBalance(employee.id, year);
+  const requests = await listEmployeeLeaves(employee.id, year);
 
   const cards = [
     { label: "Annual remaining", value: balance.annualRemaining, hint: `of ${balance.entitlement + balance.carryForward} days`, tone: "text-emerald-600" },

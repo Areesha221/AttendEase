@@ -35,7 +35,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
   const session = await requireBoss();
 
   const { id } = await props.params;
-  const employee = getEmployeeById(id);
+  const employee = await getEmployeeById(id);
   if (!employee) notFound();
 
   const params = await props.searchParams;
@@ -43,11 +43,11 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
   const currentMonth = toWorkDate().slice(0, 7);
   const month = /^\d{4}-\d{2}$/.test(requested) ? requested : currentMonth;
 
-  const { days, summary } = getMonthEvaluations(employee.id, `${month}-01`);
+  const { days, summary } = await getMonthEvaluations(employee.id, `${month}-01`);
   const ordered = [...days].reverse();
-  const balance = getLeaveBalance(employee.id);
-  const payroll = getPayrollView(employee.id, `${month}-01`);
-  const leaves = listEmployeeLeaves(employee.id).slice(0, 6);
+  const balance = await getLeaveBalance(employee.id);
+  const payroll = await getPayrollView(employee.id, `${month}-01`);
+  const leaves = (await listEmployeeLeaves(employee.id)).slice(0, 6);
   const prevMonth = shiftMonth(month, -1);
   const nextMonth = shiftMonth(month, 1);
   const canGoNext = nextMonth <= currentMonth;

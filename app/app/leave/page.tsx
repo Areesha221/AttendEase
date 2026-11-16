@@ -10,7 +10,7 @@ import { requireEmployee } from "@/lib/session";
 
 export default async function LeavePage() {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -20,10 +20,10 @@ export default async function LeavePage() {
     );
   }
 
-  const settings = getSettings();
-  const holidays = getAllHolidays().map((row) => row.date);
-  const requests = listEmployeeLeaves(employee.id);
-  const balance = getLeaveBalance(employee.id);
+  const settings = await getSettings();
+  const holidays = (await getAllHolidays()).map((row) => row.date);
+  const requests = await listEmployeeLeaves(employee.id);
+  const balance = await getLeaveBalance(employee.id);
   const today = toWorkDate();
 
   return (

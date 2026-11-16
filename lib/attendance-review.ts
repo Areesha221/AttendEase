@@ -39,7 +39,7 @@ export async function decideAttendanceReviewAction(formData: FormData): Promise<
 
   if (!eventId || !['approve', 'reject'].includes(decision)) return
 
-  const event = get<ReviewableEvent>(
+  const event = await get<ReviewableEvent>(
     `SELECT a.id, a.employee_id, a.type, a.work_date, a.server_time, a.verification,
             a.location_status, a.sync_status, a.review_status,
             e.full_name AS employee_name, e.employee_code, e.user_id
@@ -62,7 +62,7 @@ export async function decideAttendanceReviewAction(formData: FormData): Promise<
   const status = decision === 'approve' ? 'approved' : 'rejected'
   const now = toServerTime()
 
-  run(`UPDATE attendance SET review_status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?`, [
+  await run(`UPDATE attendance SET review_status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?`, [
     status,
     note || null,
     session.name,
@@ -70,7 +70,7 @@ export async function decideAttendanceReviewAction(formData: FormData): Promise<
     eventId,
   ])
 
-  run(
+  await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, ?, 'attendance', ?, ?, ?)`,
     [
@@ -88,7 +88,7 @@ export async function decideAttendanceReviewAction(formData: FormData): Promise<
     ],
   )
 
-  run(
+  await run(
     `INSERT INTO notifications (id, user_id, title, body, kind, is_read, created_at)
      VALUES (?, ?, ?, ?, ?, 0, ?)`,
     [

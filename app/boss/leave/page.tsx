@@ -22,10 +22,10 @@ export default async function BossLeavePage(props: PageProps<"/boss/leave">) {
   const status = typeof params.status === "string" ? params.status : "pending";
   const activeTab = TABS.some((tab) => tab.key === status) ? status : "pending";
 
-  const pendingCount = listLeaves({ status: "pending" }).length;
-  const approvedCount = listLeaves({ status: "approved" }).length;
-  const rejectedCount = listLeaves({ status: "rejected" }).length;
-  const requests = listLeaves({ status: activeTab, limit: 100 });
+  const pendingCount = (await listLeaves({ status: "pending" })).length;
+  const approvedCount = (await listLeaves({ status: "approved" })).length;
+  const rejectedCount = (await listLeaves({ status: "rejected" })).length;
+  const requests = await listLeaves({ status: activeTab, limit: 100 });
 
   const counts: Record<string, number> = {
     pending: pendingCount,

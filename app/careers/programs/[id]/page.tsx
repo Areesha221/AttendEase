@@ -23,10 +23,10 @@ export default async function ProgramDetailPage({ params }: PageProps<"/careers/
   const session = await requireSession();
   const { id } = await params;
 
-  const program = getProgram(id);
+  const program = await getProgram(id);
   if (!program) notFound();
 
-  const saved = isProgramSaved(session.userId, program.id);
+  const saved = await isProgramSaved(session.userId, program.id);
   const requirements = parseRequirements(program.requirements);
   const left = daysUntil(program.deadline);
   const deadlineText =

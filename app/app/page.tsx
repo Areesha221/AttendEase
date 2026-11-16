@@ -31,7 +31,7 @@ import { requireEmployee } from "@/lib/session";
 
 export default async function EmployeeHomePage() {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -44,17 +44,17 @@ export default async function EmployeeHomePage() {
     );
   }
 
-  const settings = getSettings();
+  const settings = await getSettings();
   const workDate = toWorkDate();
-  const todayEvents = getEventsForDate(employee.id, workDate).filter(
+  const todayEvents = (await getEventsForDate(employee.id, workDate)).filter(
     (event) => event.review_status !== "rejected",
   );
-  const { days, summary } = getMonthEvaluations(employee.id, workDate);
+  const { days, summary } = await getMonthEvaluations(employee.id, workDate);
   const today = days.find((day) => day.workDate === workDate);
-  const balance = getLeaveBalance(employee.id);
-  const payroll = getPayrollView(employee.id, workDate);
-  const notifications = listNotifications(session.userId, 4);
-  const pendingSync = countPendingSync(employee.id);
+  const balance = await getLeaveBalance(employee.id);
+  const payroll = await getPayrollView(employee.id, workDate);
+  const notifications = await listNotifications(session.userId, 4);
+  const pendingSync = await countPendingSync(employee.id);
 
   const checkIn = todayEvents.find((event) => event.type === "check_in") ?? null;
   const checkOut = todayEvents.find((event) => event.type === "check_out") ?? null;

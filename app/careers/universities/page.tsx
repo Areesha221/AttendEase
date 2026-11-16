@@ -12,8 +12,8 @@ export default async function UniversitiesPage({ searchParams }: PageProps<"/car
   const params = await searchParams;
   const countryId = first(params.country);
 
-  const countries = listCountries();
-  const universities = listUniversities({ countryId });
+  const countries = await listCountries();
+  const universities = await listUniversities({ countryId });
 
   const grouped = countries
     .map((country) => ({

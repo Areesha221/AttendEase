@@ -9,7 +9,6 @@ import {
   Users,
 } from "lucide-react";
 import { getSession } from "@/lib/session";
-import { SHOW_DEMO_ACCOUNTS } from "@/lib/demo-config";
 
 const FEATURES = [
   {
@@ -98,16 +97,6 @@ export default async function WelcomePage() {
               </>
             )}
           </div>
-
-          {SHOW_DEMO_ACCOUNTS && (
-            <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs text-amber-800">
-              <p className="font-semibold">Demo project</p>
-              <p className="mt-0.5">
-                Demo accounts: <span className="font-mono">boss@demo.com / boss123</span> and{" "}
-                <span className="font-mono">ali@demo.com / employee123</span>
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

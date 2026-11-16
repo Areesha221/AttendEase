@@ -37,13 +37,13 @@ export default async function ReportsPage(props: PageProps<"/boss/reports">) {
   const start = isDate(params.start) ? params.start : startOfMonth(monthAnchor);
   const end = isDate(params.end) ? params.end : endOfMonth(monthAnchor);
 
-  const employees = listEmployees();
-  const trend = getMonthlyTrend(monthAnchor);
-  const totals = getCompanyStatusTotals(monthAnchor);
-  const overview = getBossOverview(monthAnchor === startOfMonth(today) ? today : monthAnchor);
-  const payrollTotals = getPayrollTotals(monthAnchor);
-  const flagged = countFlaggedEvents(startOfMonth(monthAnchor), endOfMonth(monthAnchor));
-  const log = listAttendanceLog({ employeeId: employeeFilter, start, end, limit: 200 });
+  const employees = await listEmployees();
+  const trend = await getMonthlyTrend(monthAnchor);
+  const totals = await getCompanyStatusTotals(monthAnchor);
+  const overview = await getBossOverview(monthAnchor === startOfMonth(today) ? today : monthAnchor);
+  const payrollTotals = await getPayrollTotals(monthAnchor);
+  const flagged = await countFlaggedEvents(startOfMonth(monthAnchor), endOfMonth(monthAnchor));
+  const log = await listAttendanceLog({ employeeId: employeeFilter, start, end, limit: 200 });
 
   const prevMonth = shiftMonth(month, -1);
   const nextMonth = shiftMonth(month, 1);

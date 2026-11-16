@@ -140,27 +140,27 @@ export type PayrollView = {
 
 // ---------------- settings ----------------
 
-export function getSettings(): Settings {
-  const row = get<Settings>('SELECT * FROM settings WHERE id = 1')
-  if (!row) throw new Error('Settings row missing. Run: npm run seed')
+export async function getSettings(): Promise<Settings> {
+  const row = await get<Settings>('SELECT * FROM settings WHERE id = 1')
+  if (!row) throw new Error('Settings row missing. Run: npm run seed (local) or migrate the database.')
   return row
 }
 
 // ---------------- employees ----------------
 
-export function getEmployeeById(id: string): Employee | undefined {
+export async function getEmployeeById(id: string): Promise<Employee | undefined> {
   return get<Employee>('SELECT * FROM employees WHERE id = ?', [id])
 }
 
-export function getEmployeeByUserId(userId: string): Employee | undefined {
+export async function getEmployeeByUserId(userId: string): Promise<Employee | undefined> {
   return get<Employee>('SELECT * FROM employees WHERE user_id = ?', [userId])
 }
 
-export function getUserById(id: string): { id: string; email: string; role: string } | undefined {
+export async function getUserById(id: string): Promise<{ id: string; email: string; role: string } | undefined> {
   return get<{ id: string; email: string; role: string }>('SELECT id, email, role FROM users WHERE id = ?', [id])
 }
 
-export function listEmployees(options: { search?: string; department?: string; includeInactive?: boolean } = {}): Employee[] {
+export async function listEmployees(options: { search?: string; department?: string; includeInactive?: boolean } = {}): Promise<Employee[]> {
   const clauses: string[] = []
   const params: (string | number)[] = []
 
@@ -179,15 +179,17 @@ export function listEmployees(options: { search?: string; department?: string; i
   return all<Employee>(`SELECT * FROM employees ${where} ORDER BY employee_code`, params)
 }
 
-export function listDepartments(): string[] {
-  return all<{ department: string }>(
-    `SELECT DISTINCT department FROM employees WHERE department IS NOT NULL ORDER BY department`,
+export async function listDepartments(): Promise<string[]> {
+  return (
+    await all<{ department: string }>(
+      `SELECT DISTINCT department FROM employees WHERE department IS NOT NULL ORDER BY department`,
+    )
   ).map((row) => row.department)
 }
 
 /** Suggest the next free employee code, e.g. EMP-1005 (uses the highest number in use). */
-export function nextEmployeeCode(): string {
-  const rows = all<{ employee_code: string }>(`SELECT employee_code FROM employees`)
+export async function nextEmployeeCode(): Promise<string> {
+  const rows = await all<{ employee_code: string }>(`SELECT employee_code FROM employees`)
   let highest = 1000
   for (const row of rows) {
     const match = row.employee_code.match(/(\d+)\s*$/)
@@ -196,8 +198,8 @@ export function nextEmployeeCode(): string {
   return `EMP-${highest + 1}`
 }
 
-export function employeeCount(): { total: number; active: number; inactive: number } {
-  const row = get<{ total: number; active: number; inactive: number }>(
+export async function employeeCount(): Promise<{ total: number; active: number; inactive: number }> {
+  const row = await get<{ total: number; active: number; inactive: number }>(
     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active,
             SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) AS inactive
@@ -208,45 +210,45 @@ export function employeeCount(): { total: number; active: number; inactive: numb
 
 // ---------------- attendance ----------------
 
-export function getEventsBetween(employeeId: string, start: string, end: string): AttendanceEvent[] {
+export async function getEventsBetween(employeeId: string, start: string, end: string): Promise<AttendanceEvent[]> {
   return all<AttendanceEvent>(
     `SELECT * FROM attendance WHERE employee_id = ? AND work_date BETWEEN ? AND ? ORDER BY server_time`,
     [employeeId, start, end],
   )
 }
 
-export function getEventsForDate(employeeId: string, workDate: string): AttendanceEvent[] {
+export async function getEventsForDate(employeeId: string, workDate: string): Promise<AttendanceEvent[]> {
   return all<AttendanceEvent>(
     `SELECT * FROM attendance WHERE employee_id = ? AND work_date = ? ORDER BY server_time`,
     [employeeId, workDate],
   )
 }
 
-export function getLastEvent(employeeId: string): AttendanceEvent | undefined {
+export async function getLastEvent(employeeId: string): Promise<AttendanceEvent | undefined> {
   return get<AttendanceEvent>(
     'SELECT * FROM attendance WHERE employee_id = ? ORDER BY server_time DESC LIMIT 1',
     [employeeId],
   )
 }
 
-export function countPendingSync(employeeId?: string): number {
+export async function countPendingSync(employeeId?: string): Promise<number> {
   const row = employeeId
-    ? get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending' AND employee_id = ?`, [employeeId])
-    : get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending'`)
+    ? await get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending' AND employee_id = ?`, [employeeId])
+    : await get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending'`)
   return row?.count ?? 0
 }
 
-export function getHolidaysBetween(start: string, end: string): HolidayRow[] {
+export async function getHolidaysBetween(start: string, end: string): Promise<HolidayRow[]> {
   return all<HolidayRow>('SELECT * FROM holidays WHERE date BETWEEN ? AND ? ORDER BY date', [start, end])
 }
 
-export function getAllHolidays(): HolidayRow[] {
+export async function getAllHolidays(): Promise<HolidayRow[]> {
   return all<HolidayRow>('SELECT * FROM holidays ORDER BY date')
 }
 
 /** Set of dates on which the employee has approved leave. */
-export function getApprovedLeaveDates(employeeId: string, start: string, end: string): Set<string> {
-  const rows = all<{ start_date: string; end_date: string }>(
+export async function getApprovedLeaveDates(employeeId: string, start: string, end: string): Promise<Set<string>> {
+  const rows = await all<{ start_date: string; end_date: string }>(
     `SELECT start_date, end_date FROM leaves
      WHERE employee_id = ? AND status = 'approved'
        AND NOT (end_date < ? OR start_date > ?)`,
@@ -261,8 +263,8 @@ export function getApprovedLeaveDates(employeeId: string, start: string, end: st
   return dates
 }
 
-export function getApprovedLeaveDatesForAll(start: string, end: string): Map<string, Set<string>> {
-  const rows = all<{ employee_id: string; start_date: string; end_date: string }>(
+export async function getApprovedLeaveDatesForAll(start: string, end: string): Promise<Map<string, Set<string>>> {
+  const rows = await all<{ employee_id: string; start_date: string; end_date: string }>(
     `SELECT employee_id, start_date, end_date FROM leaves
      WHERE status = 'approved' AND NOT (end_date < ? OR start_date > ?)`,
     [start, end],
@@ -279,17 +281,17 @@ export function getApprovedLeaveDatesForAll(start: string, end: string): Map<str
 }
 
 /** Day-by-day evaluation for one employee between two dates. */
-export function getDayEvaluations(
+export async function getDayEvaluations(
   employeeId: string,
   start: string,
   end: string,
   options: { settings?: Settings; events?: AttendanceEvent[]; leaveDates?: Set<string> } = {},
-): DayEvaluation[] {
-  const settings = options.settings ?? getSettings()
-  const events = options.events ?? getEventsBetween(employeeId, start, end)
-  const leaveDates = options.leaveDates ?? getApprovedLeaveDates(employeeId, start, end)
-  const holidaySet = new Set(getHolidaysBetween(start, end).map((row) => row.date))
-  const employee = getEmployeeById(employeeId)
+): Promise<DayEvaluation[]> {
+  const settings = options.settings ?? (await getSettings())
+  const events = options.events ?? (await getEventsBetween(employeeId, start, end))
+  const leaveDates = options.leaveDates ?? (await getApprovedLeaveDates(employeeId, start, end))
+  const holidaySet = new Set((await getHolidaysBetween(start, end)).map((row) => row.date))
+  const employee = await getEmployeeById(employeeId)
   const joiningDate = employee?.joining_date ?? null
   const today = toWorkDate()
 
@@ -307,27 +309,27 @@ export function getDayEvaluations(
   )
 }
 
-export function getMonthEvaluations(employeeId: string, monthAnchor: string = toWorkDate()): {
+export async function getMonthEvaluations(employeeId: string, monthAnchor: string = toWorkDate()): Promise<{
   days: DayEvaluation[]
   summary: MonthSummary
   monthStart: string
   monthEnd: string
-} {
-  const settings = getSettings()
+}> {
+  const settings = await getSettings()
   const monthStart = startOfMonth(monthAnchor)
   const monthEnd = endOfMonth(monthAnchor)
-  const days = getDayEvaluations(employeeId, monthStart, monthEnd, { settings })
+  const days = await getDayEvaluations(employeeId, monthStart, monthEnd, { settings })
   return { days, summary: summarizeMonth(days), monthStart, monthEnd }
 }
 
-export function getPayrollView(employeeId: string, monthAnchor: string = toWorkDate()): PayrollView | null {
-  const employee = getEmployeeById(employeeId)
+export async function getPayrollView(employeeId: string, monthAnchor: string = toWorkDate()): Promise<PayrollView | null> {
+  const employee = await getEmployeeById(employeeId)
   if (!employee) return null
 
-  const settings = getSettings()
-  const { summary, monthStart, monthEnd } = getMonthEvaluations(employeeId, monthAnchor)
+  const settings = await getSettings()
+  const { summary, monthStart, monthEnd } = await getMonthEvaluations(employeeId, monthAnchor)
 
-  const unpaidRow = get<{ days: number }>(
+  const unpaidRow = await get<{ days: number }>(
     `SELECT COALESCE(SUM(days), 0) AS days FROM leaves
      WHERE employee_id = ? AND status = 'approved' AND type = 'unpaid'
        AND NOT (end_date < ? OR start_date > ?)`,
@@ -358,7 +360,7 @@ export function getPayrollView(employeeId: string, monthAnchor: string = toWorkD
 
 // ---------------- leave ----------------
 
-export function listLeaves(options: { employeeId?: string; status?: string; limit?: number } = {}): LeaveRow[] {
+export async function listLeaves(options: { employeeId?: string; status?: string; limit?: number } = {}): Promise<LeaveRow[]> {
   const clauses: string[] = []
   const params: (string | number)[] = []
 
@@ -391,9 +393,9 @@ export function listLeaves(options: { employeeId?: string; status?: string; limi
   )
 }
 
-export function getLeaveBalance(employeeId: string, year: string = toWorkDate().slice(0, 4)): LeaveBalance {
-  const employee = getEmployeeById(employeeId)
-  const rows = all<{ type: string; status: string; days: number }>(
+export async function getLeaveBalance(employeeId: string, year: string = toWorkDate().slice(0, 4)): Promise<LeaveBalance> {
+  const employee = await getEmployeeById(employeeId)
+  const rows = await all<{ type: string; status: string; days: number }>(
     `SELECT type, status, days FROM leaves
      WHERE employee_id = ? AND start_date LIKE ?`,
     [employeeId, `${year}%`],
@@ -420,8 +422,8 @@ export function getLeaveBalance(employeeId: string, year: string = toWorkDate().
   }
 }
 
-export function countLeavesOnDate(workDate: string): number {
-  const row = get<{ count: number }>(
+export async function countLeavesOnDate(workDate: string): Promise<number> {
+  const row = await get<{ count: number }>(
     `SELECT COUNT(*) AS count FROM leaves
      WHERE status = 'approved' AND start_date <= ? AND end_date >= ?`,
     [workDate, workDate],
@@ -431,22 +433,22 @@ export function countLeavesOnDate(workDate: string): number {
 
 // ---------------- notifications & audit ----------------
 
-export function listNotifications(userId: string, limit = 10): NotificationRow[] {
+export async function listNotifications(userId: string, limit = 10): Promise<NotificationRow[]> {
   return all<NotificationRow>(
     `SELECT * FROM notifications WHERE user_id IS NULL OR user_id = ? ORDER BY created_at DESC LIMIT ${limit}`,
     [userId],
   )
 }
 
-export function countUnreadNotifications(userId: string): number {
-  const row = get<{ count: number }>(
+export async function countUnreadNotifications(userId: string): Promise<number> {
+  const row = await get<{ count: number }>(
     `SELECT COUNT(*) AS count FROM notifications WHERE (user_id IS NULL OR user_id = ?) AND is_read = 0`,
     [userId],
   )
   return row?.count ?? 0
 }
 
-export function listAuditLogs(limit = 25): AuditRow[] {
+export async function listAuditLogs(limit = 25): Promise<AuditRow[]> {
   return all<AuditRow>(`SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ${limit}`)
 }
 
@@ -470,17 +472,17 @@ export type BossOverview = {
   workDate: string
 }
 
-export function getBossOverview(workDate: string = toWorkDate()): BossOverview {
-  const settings = getSettings()
-  const employees = listEmployees()
+export async function getBossOverview(workDate: string = toWorkDate()): Promise<BossOverview> {
+  const settings = await getSettings()
+  const employees = await listEmployees()
   const monthStart = startOfMonth(workDate)
   const monthEnd = endOfMonth(workDate)
-  const leaveMap = getApprovedLeaveDatesForAll(monthStart, monthEnd)
-  const holidaySet = new Set(getHolidaysBetween(monthStart, monthEnd).map((row) => row.date))
+  const leaveMap = await getApprovedLeaveDatesForAll(monthStart, monthEnd)
+  const holidaySet = new Set((await getHolidaysBetween(monthStart, monthEnd)).map((row) => row.date))
   const weekend = isWeekend(workDate, settings.weekend_days)
   const holidayToday = holidaySet.has(workDate)
 
-  const todayEvents = all<AttendanceEvent>(`SELECT * FROM attendance WHERE work_date = ?`, [workDate]).filter(
+  const todayEvents = (await all<AttendanceEvent>(`SELECT * FROM attendance WHERE work_date = ?`, [workDate])).filter(
     (event) => event.review_status !== 'rejected',
   )
   const graceLimit = minutesOf(settings.work_start) + settings.grace_minutes
@@ -525,7 +527,7 @@ export function getBossOverview(workDate: string = toWorkDate()): BossOverview {
       trends.set(department, trend)
     }
 
-    const { summary } = getMonthEvaluations(employee.id, workDate)
+    const { summary } = await getMonthEvaluations(employee.id, workDate)
     percentageSum += summary.attendancePercentage
     lateTotal += summary.lateDays * settings.late_penalty
     if (summary.lateDays === 0 && summary.absentDays === 0 && summary.presentDays > 0) {
@@ -533,7 +535,7 @@ export function getBossOverview(workDate: string = toWorkDate()): BossOverview {
     }
   }
 
-  const pendingRow = get<{ count: number }>(
+  const pendingRow = await get<{ count: number }>(
     `SELECT COUNT(*) AS count FROM leaves WHERE status IN ('pending', 'submitted')`,
   )
 
@@ -550,7 +552,7 @@ export function getBossOverview(workDate: string = toWorkDate()): BossOverview {
     attendancePercentage: employees.length ? Math.round(percentageSum / employees.length) : 0,
     totalLateDeduction: Math.round(lateTotal),
     totalApprovedBonuses: Math.round(bonusTotal),
-    pendingSyncEvents: countPendingSync(),
+    pendingSyncEvents: await countPendingSync(),
     departmentTrends: [...trends.entries()].map(([department, value]) => ({
       department,
       employees: value.employees,
@@ -562,46 +564,48 @@ export function getBossOverview(workDate: string = toWorkDate()): BossOverview {
 }
 
 /** Employee directory with today's live status (boss Employees screen). */
-export function getEmployeeDirectory(
+export async function getEmployeeDirectory(
   options: { search?: string; department?: string; includeInactive?: boolean } = {},
-): DirectoryRow[] {
-  const settings = getSettings()
-  const employees = listEmployees(options)
+): Promise<DirectoryRow[]> {
+  const settings = await getSettings()
+  const employees = await listEmployees(options)
   const workDate = toWorkDate()
   const monthStart = startOfMonth(workDate)
   const monthEnd = endOfMonth(workDate)
-  const leaveMap = getApprovedLeaveDatesForAll(monthStart, monthEnd)
-  const holidaySet = new Set(getHolidaysBetween(monthStart, monthEnd).map((row) => row.date))
+  const leaveMap = await getApprovedLeaveDatesForAll(monthStart, monthEnd)
+  const holidaySet = new Set((await getHolidaysBetween(monthStart, monthEnd)).map((row) => row.date))
   const weekend = isWeekend(workDate, settings.weekend_days)
   const holidayToday = holidaySet.has(workDate)
 
-  return employees.map((employee) => {
-    const todayEvents = getEventsForDate(employee.id, workDate).filter(
-      (event) => event.review_status !== 'rejected',
-    )
-    const onLeaveToday = leaveMap.get(employee.id)?.has(workDate) ?? false
-    const { days } = getMonthEvaluations(employee.id, workDate)
-    const today = days.find((day) => day.workDate === workDate)
+  return Promise.all(
+    employees.map(async (employee) => {
+      const todayEvents = (await getEventsForDate(employee.id, workDate)).filter(
+        (event) => event.review_status !== 'rejected',
+      )
+      const onLeaveToday = leaveMap.get(employee.id)?.has(workDate) ?? false
+      const { days } = await getMonthEvaluations(employee.id, workDate)
+      const today = days.find((day) => day.workDate === workDate)
 
-    return {
-      ...employee,
-      todayStatus: today?.status ?? (weekend ? 'weekend' : holidayToday ? 'holiday' : 'absent'),
-      lastCheckIn: todayEvents.find((event) => event.type === 'check_in')?.server_time ?? null,
-      lastCheckOut: todayEvents.find((event) => event.type === 'check_out')?.server_time ?? null,
-      onLeaveToday,
-      lateDaysThisMonth: days.filter((day) => day.status === 'late').length,
-      absentDaysThisMonth: days.filter((day) => day.status === 'absent').length,
-    }
-  })
+      return {
+        ...employee,
+        todayStatus: today?.status ?? (weekend ? 'weekend' : holidayToday ? 'holiday' : 'absent'),
+        lastCheckIn: todayEvents.find((event) => event.type === 'check_in')?.server_time ?? null,
+        lastCheckOut: todayEvents.find((event) => event.type === 'check_out')?.server_time ?? null,
+        onLeaveToday,
+        lateDaysThisMonth: days.filter((day) => day.status === 'late').length,
+        absentDaysThisMonth: days.filter((day) => day.status === 'absent').length,
+      }
+    }),
+  )
 }
 
 /** Attendance log rows for the boss attendance table. */
-export function listAttendanceLog(options: {
+export async function listAttendanceLog(options: {
   employeeId?: string
   start: string
   end: string
   limit?: number
-}): (AttendanceEvent & { employee_name: string; employee_code: string; department: string | null })[] {
+}): Promise<(AttendanceEvent & { employee_name: string; employee_code: string; department: string | null })[]> {
   const clauses = ['a.work_date BETWEEN ? AND ?']
   const params: (string | number)[] = [options.start, options.end]
 
@@ -628,8 +632,8 @@ export function recentAttendanceDates(days = 30): string[] {
 }
 
 /** Distinct months (YYYY-MM) that have attendance rows, newest first, always including this month. */
-export function listAttendanceMonths(employeeId: string): string[] {
-  const rows = all<{ month: string }>(
+export async function listAttendanceMonths(employeeId: string): Promise<string[]> {
+  const rows = await all<{ month: string }>(
     `SELECT DISTINCT substr(work_date, 1, 7) AS month FROM attendance WHERE employee_id = ? ORDER BY month DESC`,
     [employeeId],
   )
@@ -640,7 +644,7 @@ export function listAttendanceMonths(employeeId: string): string[] {
 }
 
 /** Every leave request for one employee in a calendar year, newest first. */
-export function listEmployeeLeaves(employeeId: string, year: string = toWorkDate().slice(0, 4)): LeaveRow[] {
+export async function listEmployeeLeaves(employeeId: string, year: string = toWorkDate().slice(0, 4)): Promise<LeaveRow[]> {
   return all<LeaveRow>(
     `SELECT l.*, e.full_name AS employee_name, e.employee_code, e.department, e.photo
      FROM leaves l
@@ -661,7 +665,7 @@ export type LiveEvent = AttendanceEvent & {
 }
 
 /** Every attendance event for a single day with the employee attached (live monitor). */
-export function listDayAttendance(workDate: string = toWorkDate()): LiveEvent[] {
+export async function listDayAttendance(workDate: string = toWorkDate()): Promise<LiveEvent[]> {
   return all<LiveEvent>(
     `SELECT a.*, e.full_name AS employee_name, e.employee_code, e.department, e.job_title
      FROM attendance a
@@ -673,7 +677,7 @@ export function listDayAttendance(workDate: string = toWorkDate()): LiveEvent[] 
 }
 
 /** Every event still waiting for a boss decision, across all dates (newest first). */
-export function listReviewQueue(limit = 100): LiveEvent[] {
+export async function listReviewQueue(limit = 100): Promise<LiveEvent[]> {
   return all<LiveEvent>(
     `SELECT a.*, e.full_name AS employee_name, e.employee_code, e.department, e.job_title
      FROM attendance a
@@ -690,19 +694,18 @@ export type TrendPoint = { date: string; label: string; present: number; late: n
  * Company-wide present / late / absent counts for each working day of a month,
  * from the first day up to today. Future days are excluded.
  */
-export function getMonthlyTrend(monthAnchor: string = toWorkDate()): TrendPoint[] {
-  const settings = getSettings()
-  const employees = listEmployees()
+export async function getMonthlyTrend(monthAnchor: string = toWorkDate()): Promise<TrendPoint[]> {
+  const settings = await getSettings()
+  const employees = await listEmployees()
   const monthStart = startOfMonth(monthAnchor)
   const monthEnd = endOfMonth(monthAnchor)
   const today = toWorkDate()
-  const leaveMap = getApprovedLeaveDatesForAll(monthStart, monthEnd)
-  const holidaySet = new Set(getHolidaysBetween(monthStart, monthEnd).map((row) => row.date))
+  const leaveMap = await getApprovedLeaveDatesForAll(monthStart, monthEnd)
+  const holidaySet = new Set((await getHolidaysBetween(monthStart, monthEnd)).map((row) => row.date))
   const graceLimit = minutesOf(settings.work_start) + settings.grace_minutes
 
-  const events = all<AttendanceEvent>(
-    `SELECT * FROM attendance WHERE work_date BETWEEN ? AND ?`,
-    [monthStart, monthEnd],
+  const events = (
+    await all<AttendanceEvent>(`SELECT * FROM attendance WHERE work_date BETWEEN ? AND ?`, [monthStart, monthEnd])
   ).filter((event) => event.review_status !== 'rejected')
   const byEmployeeDate = new Map<string, AttendanceEvent[]>()
   for (const event of events) {
@@ -738,10 +741,10 @@ export function getMonthlyTrend(monthAnchor: string = toWorkDate()): TrendPoint[
 export type CompanyStatusTotals = { onTime: number; late: number; absent: number; leave: number; present: number }
 
 /** Month-to-date status totals summed across every employee (for the status chart). */
-export function getCompanyStatusTotals(monthAnchor: string = toWorkDate()): CompanyStatusTotals {
+export async function getCompanyStatusTotals(monthAnchor: string = toWorkDate()): Promise<CompanyStatusTotals> {
   const totals: CompanyStatusTotals = { onTime: 0, late: 0, absent: 0, leave: 0, present: 0 }
-  for (const employee of listEmployees()) {
-    const { summary } = getMonthEvaluations(employee.id, monthAnchor)
+  for (const employee of await listEmployees()) {
+    const { summary } = await getMonthEvaluations(employee.id, monthAnchor)
     totals.onTime += summary.onTimeDays
     totals.late += summary.lateDays
     totals.absent += summary.absentDays
@@ -752,8 +755,8 @@ export function getCompanyStatusTotals(monthAnchor: string = toWorkDate()): Comp
 }
 
 /** Count of attendance events that failed location verification within a range. */
-export function countFlaggedEvents(start: string, end: string): number {
-  const row = get<{ count: number }>(
+export async function countFlaggedEvents(start: string, end: string): Promise<number> {
+  const row = await get<{ count: number }>(
     `SELECT COUNT(*) AS count FROM attendance WHERE verification = 'flagged' AND work_date BETWEEN ? AND ?`,
     [start, end],
   )
@@ -761,18 +764,18 @@ export function countFlaggedEvents(start: string, end: string): number {
 }
 
 /** Month-to-date payroll totals across all active employees (for the reports summary). */
-export function getPayrollTotals(monthAnchor: string = toWorkDate()): {
+export async function getPayrollTotals(monthAnchor: string = toWorkDate()): Promise<{
   lateDeductions: number
   absenceDeductions: number
   bonuses: number
   totalNet: number
-} {
+}> {
   let lateDeductions = 0
   let absenceDeductions = 0
   let bonuses = 0
   let totalNet = 0
-  for (const employee of listEmployees()) {
-    const view = getPayrollView(employee.id, monthAnchor)
+  for (const employee of await listEmployees()) {
+    const view = await getPayrollView(employee.id, monthAnchor)
     if (!view) continue
     lateDeductions += view.payroll.lateTotal
     absenceDeductions += view.payroll.absenceTotal + view.payroll.unpaidLeaveTotal

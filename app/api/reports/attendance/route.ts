@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const start = isDate(startParam) ? startParam : `${today.slice(0, 7)}-01`
   const end = isDate(endParam) ? endParam : today
 
-  const rows = listAttendanceLog({ employeeId: employee, start, end, limit: 5000 })
+  const rows = await listAttendanceLog({ employeeId: employee, start, end, limit: 5000 })
 
   const header = [
     'work_date',

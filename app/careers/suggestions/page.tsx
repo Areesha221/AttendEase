@@ -45,12 +45,12 @@ export default async function SuggestionsPage({ searchParams }: PageProps<"/care
       profile.percentage !== undefined,
   );
 
-  const suggestions = hasProfile ? suggestPrograms(profile, 12) : [];
-  const savedIds = new Set(listSavedProgramIds(session.userId));
+  const suggestions = hasProfile ? await suggestPrograms(profile, 12) : [];
+  const savedIds = new Set(await listSavedProgramIds(session.userId));
 
-  const countries = listCountries();
-  const levels = listLevels();
-  const disciplines = listDisciplines();
+  const countries = await listCountries();
+  const levels = await listLevels();
+  const disciplines = await listDisciplines();
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6">

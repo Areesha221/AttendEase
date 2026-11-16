@@ -14,7 +14,7 @@ function shiftMonth(month: string, delta: number): string {
 
 export default async function AttendanceHistoryPage(props: PageProps<"/app/attendance">) {
   const session = await requireEmployee();
-  const employee = getEmployeeByUserId(session.userId);
+  const employee = await getEmployeeByUserId(session.userId);
 
   if (!employee) {
     return (
@@ -29,7 +29,7 @@ export default async function AttendanceHistoryPage(props: PageProps<"/app/atten
   const currentMonth = toWorkDate().slice(0, 7);
   const month = /^\d{4}-\d{2}$/.test(requested) ? requested : currentMonth;
 
-  const { days, summary } = getMonthEvaluations(employee.id, `${month}-01`);
+  const { days, summary } = await getMonthEvaluations(employee.id, `${month}-01`);
   const ordered = [...days].reverse();
   const prevMonth = shiftMonth(month, -1);
   const nextMonth = shiftMonth(month, 1);

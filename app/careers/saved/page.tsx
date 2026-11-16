@@ -7,7 +7,7 @@ import { requireSession } from "@/lib/session";
 
 export default async function SavedProgramsPage() {
   const session = await requireSession();
-  const programs = listSavedPrograms(session.userId);
+  const programs = await listSavedPrograms(session.userId);
 
   const closingSoon = programs.filter((program) => {
     const left = daysUntil(program.deadline);
