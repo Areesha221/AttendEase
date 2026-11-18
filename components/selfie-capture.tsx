@@ -6,7 +6,6 @@ import {
   AlertTriangle,
   Camera,
   CheckCircle2,
-  ImageIcon,
   Loader2,
   MapPin,
   RefreshCw,
@@ -28,31 +27,6 @@ type Props = {
 
 type CameraState = "idle" | "starting" | "ready" | "error";
 type LocationState = "idle" | "loading" | "ready" | "error";
-
-function drawDemoSelfie(name: string, type: CaptureType, clock: string): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = 480;
-  canvas.height = 360;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return "";
-  const gradient = ctx.createLinearGradient(0, 0, 480, 360);
-  gradient.addColorStop(0, "#4f46e5");
-  gradient.addColorStop(1, "#0ea5e9");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 480, 360);
-  ctx.fillStyle = "rgba(255,255,255,0.16)";
-  ctx.beginPath();
-  ctx.arc(240, 150, 78, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 28px system-ui, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(type === "check_in" ? "DEMO SELFIE" : "DEMO SELFIE", 240, 160);
-  ctx.font = "16px system-ui, sans-serif";
-  ctx.fillText(name, 240, 260);
-  ctx.fillText(clock, 240, 288);
-  return canvas.toDataURL("image/jpeg", 0.7);
-}
 
 export default function SelfieCapture({ type, office, employeeName, employeeCode }: Props) {
   const router = useRouter();
@@ -78,7 +52,9 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
   const startCamera = useCallback(async () => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
       setCameraState("error");
-      setCameraError("This browser or page cannot use the camera. Use the demo selfie button below to continue.");
+      setCameraError(
+        "This browser cannot access a camera. Attendance needs a live selfie, so open the site in Chrome, Safari or Edge with camera permission allowed.",
+      );
       return;
     }
     setCameraError(null);
@@ -99,8 +75,8 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
       setCameraState("error");
       setCameraError(
         name === "NotAllowedError"
-          ? "Camera permission was blocked. Allow it in the browser, or use the demo selfie button."
-          : "No camera was found. Use the demo selfie button to continue.",
+          ? "Camera permission was blocked. Allow camera access for this site in your browser settings, then tap Retry camera."
+          : "No camera was found. A live selfie is required for attendance, so use a phone or laptop with a working camera.",
       );
     }
   }, []);
@@ -170,20 +146,6 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
   const retake = () => {
     setPhoto(null);
     void startCamera();
-  };
-
-  const useDemoSelfie = () => {
-    const clock = new Date().toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" });
-    setPhoto(drawDemoSelfie(employeeName, type, clock));
-    setError(null);
-    stopCamera();
-    setCameraState("idle");
-  };
-
-  const useDemoLocation = () => {
-    setLocation({ lat: office.lat, lng: office.lng, accuracy: 6 });
-    setLocationState("ready");
-    setLocationError(null);
   };
 
   const distance = location ? distanceMeters(location.lat, location.lng, office.lat, office.lng) : null;
@@ -294,11 +256,6 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
               <RefreshCw className="h-4 w-4" /> Retry camera
             </button>
           )}
-          {!photo && (
-            <button type="button" onClick={useDemoSelfie} className="btn btn-ghost">
-              <ImageIcon className="h-4 w-4" /> Use demo selfie
-            </button>
-          )}
           {photo && (
             <button type="button" onClick={retake} className="btn btn-ghost">
               <RefreshCw className="h-4 w-4" /> Retake
@@ -358,9 +315,6 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
           <div className="mt-3 flex flex-wrap gap-2">
             <button type="button" onClick={requestLocation} className="btn btn-sm btn-ghost">
               <MapPin className="h-3.5 w-3.5" /> Refresh location
-            </button>
-            <button type="button" onClick={useDemoLocation} className="btn btn-sm btn-ghost">
-              Use demo office location
             </button>
           </div>
         </div>
