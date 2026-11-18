@@ -96,6 +96,22 @@ async function migrate(client: Client): Promise<void> {
   await addColumn('photo_hash', 'TEXT')
   await addColumn('photo_sha', 'TEXT')
   await addColumn('fraud_flags', 'TEXT')
+  // Rotating entrance-code result for this capture.
+  await addColumn('gate_status', "TEXT NOT NULL DEFAULT 'not_required'")
+
+  // ---- settings columns ----
+  const settingsInfo = await client.execute('PRAGMA table_info(settings)')
+  const settingsColumns = settingsInfo.rows as unknown as Array<{ name: string }>
+  if (!settingsColumns.some((column) => column.name === 'require_gate_code')) {
+    try {
+      await client.execute(
+        'ALTER TABLE settings ADD COLUMN require_gate_code INTEGER NOT NULL DEFAULT 0',
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!/duplicate column/i.test(message)) throw error
+    }
+  }
 
   // Flagged / outside-office events (including ones captured before the
   // review feature existed) need a boss decision. Events still waiting to

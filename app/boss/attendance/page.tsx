@@ -172,6 +172,12 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                       <ShieldAlert className="h-3 w-3" /> {label}
                     </span>
                   ))}
+                  {event.gate_status === "valid" && (
+                    <span className={`badge ${TONE_CLASSES.green}`}>gate verified</span>
+                  )}
+                  {(event.gate_status === "missing" || event.gate_status === "invalid") && (
+                    <span className={`badge ${TONE_CLASSES.red}`}>gate {event.gate_status}</span>
+                  )}
                 </div>
                 {event.reason && (
                   <p className="mt-1 flex items-center gap-1 text-[11px] text-rose-600">

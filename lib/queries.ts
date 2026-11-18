@@ -46,6 +46,7 @@ export type Settings = {
   photo_retention_days: number
   audit_retention_days: number
   require_approval_for_deductions: number
+  require_gate_code: number
   updated_at: string
 }
 

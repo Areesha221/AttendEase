@@ -2,11 +2,12 @@ import Link from "next/link";
 import { ArrowLeft, CheckCircle2, LogIn } from "lucide-react";
 import SelfieCapture from "@/components/selfie-capture";
 import { getEmployeeByUserId, getEventsForDate, getSettings } from "@/lib/queries";
+import { normalizeGateCode } from "@/lib/gate";
 import { formatTime12, toWorkDate } from "@/lib/time";
 import { eventClock } from "@/lib/rules";
 import { requireEmployee } from "@/lib/session";
 
-export default async function CheckOutPage() {
+export default async function CheckOutPage(props: PageProps<"/app/check-out">) {
   const session = await requireEmployee();
   const employee = await getEmployeeByUserId(session.userId);
 
@@ -23,6 +24,8 @@ export default async function CheckOutPage() {
   const events = await getEventsForDate(employee.id, workDate);
   const checkIn = events.find((event) => event.type === "check_in") ?? null;
   const checkOut = events.find((event) => event.type === "check_out") ?? null;
+  const params = await props.searchParams;
+  const initialGateCode = normalizeGateCode(typeof params.code === "string" ? params.code : "");
 
   return (
     <main className="mx-auto w-full max-w-5xl px-5 py-6">
@@ -77,6 +80,8 @@ export default async function CheckOutPage() {
             }}
             employeeName={employee.full_name}
             employeeCode={employee.employee_code}
+            gateRequired={settings.require_gate_code === 1}
+            initialGateCode={initialGateCode}
           />
         </div>
       )}

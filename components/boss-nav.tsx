@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, CalendarCheck, GraduationCap, LayoutDashboard, ScanFace, Users, UserCog } from "lucide-react";
+import { BarChart3, CalendarCheck, GraduationCap, LayoutDashboard, QrCode, ScanFace, Users, UserCog } from "lucide-react";
 
 const LINKS = [
   { href: "/boss", label: "Dashboard", icon: LayoutDashboard },
   { href: "/boss/employees", label: "Employees", icon: Users },
   { href: "/boss/attendance", label: "Attendance", icon: ScanFace },
+  { href: "/boss/gate", label: "Gate", icon: QrCode },
   { href: "/boss/leave", label: "Leave", icon: CalendarCheck },
   { href: "/boss/reports", label: "Reports", icon: BarChart3 },
   { href: "/careers", label: "Careers", icon: GraduationCap },

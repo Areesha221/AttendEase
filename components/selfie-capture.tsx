@@ -23,12 +23,23 @@ type Props = {
   office: Office;
   employeeName: string;
   employeeCode: string;
+  /** When true the employee must enter the rotating code shown at the entrance. */
+  gateRequired?: boolean;
+  /** Code pre-filled from a scanned QR link. */
+  initialGateCode?: string;
 };
 
 type CameraState = "idle" | "starting" | "ready" | "error";
 type LocationState = "idle" | "loading" | "ready" | "error";
 
-export default function SelfieCapture({ type, office, employeeName, employeeCode }: Props) {
+export default function SelfieCapture({
+  type,
+  office,
+  employeeName,
+  employeeCode,
+  gateRequired = false,
+  initialGateCode = "",
+}: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -43,6 +54,9 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [gateCode, setGateCode] = useState(initialGateCode);
+  const gateCodeComplete = gateCode.length === 6;
 
   const stopCamera = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop());
@@ -156,6 +170,10 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
       setError("Take a selfie before continuing.");
       return;
     }
+    if (gateRequired && !gateCodeComplete) {
+      setError("Enter the 6-digit code shown on the entrance screen.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -167,6 +185,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
       latitude: location?.lat ?? null,
       longitude: location?.lng ?? null,
       accuracyM: location?.accuracy ?? null,
+      gateCode: gateCode || undefined,
     };
 
     try {
@@ -185,6 +204,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
           distanceM?: number | null;
           verification?: string;
           fraudFlags?: string;
+          gateStatus?: string;
         }[];
       };
       const result = data.results?.[0];
@@ -201,6 +221,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
         distance: result.distanceM !== null && result.distanceM !== undefined ? String(result.distanceM) : "",
         verification: result.verification ?? "",
         fraud: result.fraudFlags ?? "",
+        gate: result.gateStatus ?? "",
       });
       router.push(`/app/success?${params}`);
     } catch {
@@ -323,8 +344,49 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
           </div>
         </div>
 
+        {gateRequired && (
+          <div className="card">
+            <p className="section-title">3 · Entrance code</p>
+            <p className="mt-2 text-xs text-slate-600">
+              Scan the QR at the door with your phone camera, or type the 6-digit code shown on the
+              entrance screen. The code changes every 30 seconds.
+            </p>
+
+            <label className="label mt-3" htmlFor="gate-code">
+              Gate code
+            </label>
+            <input
+              id="gate-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={gateCode}
+              onChange={(event) => setGateCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              placeholder="000000"
+              className="input text-center font-mono text-lg tracking-[0.4em]"
+            />
+
+            <p
+              className={`mt-2 flex items-start gap-1.5 text-[11px] ${
+                gateCodeComplete ? "text-emerald-700" : "text-amber-800"
+              }`}
+            >
+              {gateCodeComplete ? (
+                <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              )}
+              {gateCodeComplete
+                ? "Code entered — the server checks it against its own clock."
+                : "Required. Without a valid code the event is still saved, but it is flagged for your boss to review."}
+            </p>
+          </div>
+        )}
+
         <div className="card">
-          <p className="section-title">3 · Confirm {isCheckIn ? "check-in" : "check-out"}</p>
+          <p className="section-title">
+            {gateRequired ? "4" : "3"} · Confirm {isCheckIn ? "check-in" : "check-out"}
+          </p>
           <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
             <li className="flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" /> Server time (Asia/Karachi) is recorded, not your
@@ -349,7 +411,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
           <button
             type="button"
             onClick={submit}
-            disabled={submitting || !photo}
+            disabled={submitting || !photo || (gateRequired && !gateCodeComplete)}
             className={`btn mt-3 w-full ${isCheckIn ? "btn-success" : "btn-primary"}`}
           >
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}

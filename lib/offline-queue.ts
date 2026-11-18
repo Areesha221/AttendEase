@@ -13,6 +13,8 @@ export type QueuedEvent = {
   latitude: number | null;
   longitude: number | null;
   accuracyM: number | null;
+  /** Rotating entrance code, when the office requires one. */
+  gateCode?: string;
 };
 
 const STORAGE_KEY = "attendease.attendance.queue";

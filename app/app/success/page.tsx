@@ -14,7 +14,10 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
   const distance = typeof params.distance === "string" && params.distance ? params.distance : null;
   const flagged = !offline && (params.verification === "flagged" || params.verification === "pending");
   const fraud = typeof params.fraud === "string" ? params.fraud : "";
+  const gate = typeof params.gate === "string" ? params.gate : "";
   const flagReasons: string[] = [];
+  if (gate === "missing") flagReasons.push("the entrance code was not entered");
+  if (gate === "invalid") flagReasons.push("the entrance code was wrong or had expired");
   if (fraud.includes("duplicate_selfie")) flagReasons.push("the selfie looked identical to one you sent earlier");
   if (fraud.includes("impossible_travel"))
     flagReasons.push("the location was too far from your previous capture to be possible in the time between");
@@ -29,6 +32,14 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
 
   const locationLabel =
     status === "inside" ? "Inside office radius" : status === "outside" ? "Outside office radius" : "Location unavailable";
+  const gateLabel =
+    gate === "valid"
+      ? "Entrance code verified"
+      : gate === "missing"
+        ? "Entrance code missing"
+        : gate === "invalid"
+          ? "Entrance code wrong or expired"
+          : null;
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col justify-center px-5 py-12">
@@ -66,6 +77,14 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
               {distance ? ` · ${distance} m` : ""}
             </dd>
           </div>
+          {gateLabel && (
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-2.5">
+              <dt className="flex items-center gap-1.5 text-slate-500">
+                <ShieldCheck className="h-4 w-4" /> Entrance code
+              </dt>
+              <dd className={`font-semibold ${gate === "valid" ? "text-slate-900" : "text-rose-700"}`}>{gateLabel}</dd>
+            </div>
+          )}
         </dl>
 
         {flagged && (

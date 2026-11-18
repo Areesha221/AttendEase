@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS settings (
   photo_retention_days    INTEGER NOT NULL DEFAULT 90,
   audit_retention_days    INTEGER NOT NULL DEFAULT 365,
   require_approval_for_deductions INTEGER NOT NULL DEFAULT 1,
+  require_gate_code       INTEGER NOT NULL DEFAULT 0,   -- 1 = attendance needs the entrance QR code
   updated_at              TEXT NOT NULL
 );
 
@@ -86,6 +87,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   photo_hash      TEXT,                   -- 64-bit perceptual hash (dHash) of the selfie
   photo_sha       TEXT,                   -- SHA-256 of the decoded selfie bytes
   fraud_flags     TEXT,                   -- comma separated: duplicate_selfie, impossible_travel
+  gate_status     TEXT NOT NULL DEFAULT 'not_required', -- valid | invalid | missing | not_required
   created_at      TEXT NOT NULL
 );
 

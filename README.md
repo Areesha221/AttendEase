@@ -13,6 +13,10 @@ database, and locally against a plain SQLite file.
 
 ### Employee
 - **Selfie check-in / check-out** with live camera capture.
+- **Rotating entrance code (QR)**: the office entrance screen shows a QR + 6-digit code that changes
+  every 30 seconds. Employees scan it with their phone camera (or type the number); the server checks it
+  against its own clock, so a screenshot or a code shared from home is useless. Optional per policy —
+  when it is required, a capture without a valid code is flagged for review instead of verified.
 - **Anti-fraud checks**: every selfie gets a perceptual hash (dHash) compared with the employee's earlier
   captures — reusing the same photo is flagged — and two GPS fixes that would need impossible travel
   (over 250 km/h) between them are flagged too. Flags never block a check-in; they go to the boss.
@@ -31,10 +35,13 @@ database, and locally against a plain SQLite file.
 - **Employees** directory (with a **Show inactive** toggle) + per-employee detail with photo review.
 - **Leave approvals** (approve / reject with reason) that feed back into attendance.
 - **Attendance review**: flagged events (selfie taken outside the office radius, synced late from the
-  offline queue, carrying a GPS accuracy worse than ±150 m, reusing an earlier selfie, or showing
-  impossible travel) can be approved or rejected with a note. Each card shows the exact coordinates as a
-  Google Maps link, the reported accuracy, the distance from the office and any anti-fraud badges.
-  Every decision is written to the audit log and the employee is notified.
+  offline queue, carrying a GPS accuracy worse than ±150 m, reusing an earlier selfie, showing
+  impossible travel, or missing/expired entrance code) can be approved or rejected with a note. Each
+  card shows the exact coordinates as a Google Maps link, the reported accuracy, the distance from the
+  office and any anti-fraud badges. Every decision is written to the audit log and the employee is
+  notified.
+- **Entrance gate screen** (`/boss/gate`): a full-screen rotating QR + code to leave on a tablet at the
+  door, with a one-click switch that makes the entrance code mandatory for verified attendance.
 - **Reports** with payroll summary (deductions, bonuses, net pay) and **CSV export**.
 - **Policy settings** (office location, radius, work hours, grace, working days, penalties).
 
@@ -207,6 +214,7 @@ Copy the output; it becomes `SESSION_SECRET`.
 | `TURSO_DATABASE_URL` | your `libsql://…` URL |
 | `TURSO_AUTH_TOKEN` | your Turso token |
 | `SESSION_SECRET` | the long random string from step 6 |
+| `GATE_SECRET` *(optional)* | a second long random string just for entrance codes; defaults to `SESSION_SECRET` |
 
 6. Click **Deploy**.
 
@@ -325,6 +333,9 @@ attendance-app/
 
 - Passwords are hashed with **bcrypt**; sessions use an **HMAC-signed httpOnly cookie**.
 - `SESSION_SECRET` must be set in production. A random value makes cookies unforgeable.
+- Attendance integrity: server-authoritative time, server-computed distance, 64-bit selfie hashes,
+  impossible-travel detection and (optionally) a rotating 30-second entrance code. A failed check never
+  deletes a record — it queues it for the boss — so genuine employees are not silently punished.
 - CNIC numbers are **masked** in the UI; photos are shown only to authorised roles.
 - Every manual correction is written to an **audit log**.
 - Login pages show **no demo credentials**: the app ships without demo hints, so the live site only

@@ -68,6 +68,7 @@ export type AttendanceEvent = {
   photo_hash: string | null
   photo_sha: string | null
   fraud_flags: string | null
+  gate_status: 'valid' | 'invalid' | 'missing' | 'not_required' | null
 }
 
 export type PolicyLike = {

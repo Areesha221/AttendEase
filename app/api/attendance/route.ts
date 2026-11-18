@@ -32,6 +32,7 @@ import {
   type FraudFlag,
 } from '@/lib/fraud'
 import { photoFingerprint } from '@/lib/photo-hash'
+import { normalizeGateCode, verifyGateCode } from '@/lib/gate'
 import { distanceMeters, toServerTime, toWorkDate } from '@/lib/time'
 
 type IncomingEvent = {
@@ -42,6 +43,7 @@ type IncomingEvent = {
   latitude?: unknown
   longitude?: unknown
   accuracyM?: unknown
+  gateCode?: unknown
 }
 
 type EventResult = {
@@ -55,6 +57,7 @@ type EventResult = {
   locationStatus?: 'inside' | 'outside' | 'unavailable'
   verification?: 'verified' | 'flagged' | 'pending'
   fraudFlags?: string
+  gateStatus?: 'valid' | 'invalid' | 'missing' | 'not_required'
 }
 
 const numberOrNull = (value: unknown): number | null =>
@@ -203,6 +206,22 @@ export async function POST(request: Request) {
     }
     if (offlineCapture) reasonParts.push('Captured offline — device date/time used')
 
+    // ---- rotating entrance code -----------------------------------------
+    // Proves the phone was at the office door at capture time. Only required
+    // when the boss turns it on, so existing flows keep working.
+    const gateRequired = settings.require_gate_code === 1
+    const gateCode = normalizeGateCode(typeof event.gateCode === 'string' ? event.gateCode : '')
+    const gateValid = verifyGateCode(gateCode)
+    const gateStatus: 'valid' | 'invalid' | 'missing' | 'not_required' = gateValid
+      ? 'valid'
+      : gateRequired
+        ? gateCode
+          ? 'invalid'
+          : 'missing'
+        : 'not_required'
+    if (gateStatus === 'missing') reasonParts.push('Entrance gate code was not entered')
+    if (gateStatus === 'invalid') reasonParts.push('Entrance gate code was wrong or had expired')
+
     // ---- anti-fraud checks ----------------------------------------------
     // Neither check rejects the event: they mark it for human review, because
     // only the boss can tell a real problem (reused photo, spoofed GPS) from a
@@ -225,7 +244,8 @@ export async function POST(request: Request) {
       reasonParts.push(describeTravel(travel))
     }
 
-    const verification = fraudFlags.length > 0 ? 'flagged' : locationVerification
+    const gateFailed = gateStatus === 'missing' || gateStatus === 'invalid'
+    const verification = fraudFlags.length > 0 || gateFailed ? 'flagged' : locationVerification
     const fraudFlagsValue = fraudFlags.length > 0 ? fraudFlags.join(',') : null
     const reason = reasonParts.length ? reasonParts.join(' · ') : null
 
@@ -237,8 +257,8 @@ export async function POST(request: Request) {
       `INSERT INTO attendance
          (id, event_id, employee_id, type, work_date, server_time, device_time, photo,
           latitude, longitude, accuracy_m, distance_m, location_status, sync_status, verification, review_status, reason,
-          photo_hash, photo_sha, fraud_flags, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?, ?, ?, ?)`,
+          photo_hash, photo_sha, fraud_flags, gate_status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId('att'),
         eventId,
@@ -259,6 +279,7 @@ export async function POST(request: Request) {
         fingerprint?.dhash ?? null,
         fingerprint?.sha ?? null,
         fraudFlagsValue,
+        gateStatus,
         serverTime,
       ],
     )
@@ -290,6 +311,7 @@ export async function POST(request: Request) {
       locationStatus,
       verification,
       fraudFlags: fraudFlagsValue ?? undefined,
+      gateStatus,
     })
   }
 
