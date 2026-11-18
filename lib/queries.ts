@@ -181,6 +181,19 @@ export async function listEmployees(options: { search?: string; department?: str
   return all<Employee>(`SELECT * FROM employees ${where} ORDER BY employee_code`, params)
 }
 
+/**
+ * Active employees who are not the boss/admin account. Team lists (absent,
+ * still working, late ranking) must never include the owner's own record.
+ */
+export async function listTeamEmployees(): Promise<Employee[]> {
+  return all<Employee>(
+    `SELECT e.* FROM employees e
+     LEFT JOIN users u ON u.id = e.user_id
+     WHERE e.status = 'active' AND (u.role IS NULL OR u.role = 'employee')
+     ORDER BY e.employee_code`,
+  )
+}
+
 export async function listDepartments(): Promise<string[]> {
   return (
     await all<{ department: string }>(

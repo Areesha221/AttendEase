@@ -42,6 +42,10 @@ database, and locally against a plain SQLite file.
   notified.
 - **Entrance gate screen** (`/boss/gate`): a full-screen rotating QR + code to leave on a tablet at the
   door, with a one-click switch that makes the entrance code mandatory for verified attendance.
+- **Ask AttendEase** (`/boss/assistant`): a read-only, rule-based assistant for plain **English**
+  questions — late arrivals, absences, pending reviews and leave requests, one employee's month summary
+  or leave balance, company and payroll totals, and the gate policy. It uses the same database queries as
+  the dashboard (no external AI service, no writes), so the same question always gives the same answer.
 - **Reports** with payroll summary (deductions, bonuses, net pay) and **CSV export**.
 - **Policy settings** (office location, radius, work hours, grace, working days, penalties).
 
@@ -274,6 +278,32 @@ Sign in as the boss and open **Employees** in the top navigation.
 | **Reset someone's password** | Use the **Reset password** card on their page. |
 
 > You can never deactivate or delete **your own** boss account.
+
+---
+
+## 🤖 Ask AttendEase (assistant)
+
+Open **Assistant** in the boss navigation and type a normal English question. There is no external AI
+provider: each question is matched to one built-in rule, then answered with the same read-only queries
+the dashboard uses. The same question always produces the same numbers, and the assistant cannot change
+attendance, leave, payroll or settings.
+
+| Ask (English) | What you get |
+|---|---|
+| `Who is late today?` | Check-ins after the grace period, with minutes late |
+| `Who is absent today?` | Active team members with no check-in, leave or holiday |
+| `Who has not checked out?` | People still clocked in today |
+| `What needs my review?` | The attendance review queue with flag reasons |
+| `Pending leave requests` | Requests waiting for your decision |
+| `Top late employees this month` | Ranked late days (add `more than 2` to filter) |
+| `Summary for <employee> this month` | Present / late / absent / leave and averages |
+| `Leave balance of <employee>` | Annual entitlement, used, pending and remaining |
+| `Payroll this month` | Company payroll estimate; add an employee name for one person |
+| `Company summary this month` | Month-to-date on-time / late / absent / leave totals |
+| `Is the gate code required?` | Current entrance-code policy |
+
+An unrecognised question returns a short “I did not understand” reply plus English example chips. The
+boss's own employee record is excluded from team lists such as absence and late rankings.
 
 ---
 
