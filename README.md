@@ -13,7 +13,7 @@ database, and locally against a plain SQLite file.
 
 ### Employee
 - **Selfie check-in / check-out** with live camera capture.
-- **GPS + office-radius verification** (inside/outside status, accuracy, distance).
+- **GPS + office-radius verification** (inside/outside status, accuracy, distance, map link for admins).
 - **Server time** always recorded in **Asia/Karachi (PKT)**, with late/early detection and a grace period.
 - **Attendance history** with status badges (present / late / half-day / absent). Days **before the
   employee's joining date** are shown as “Before joining” and never counted as absence.
@@ -27,8 +27,10 @@ database, and locally against a plain SQLite file.
 - **Password administration**: reset any employee's password, and change your own from Profile.
 - **Employees** directory (with a **Show inactive** toggle) + per-employee detail with photo review.
 - **Leave approvals** (approve / reject with reason) that feed back into attendance.
-- **Attendance review**: flagged events (selfie taken outside the office radius) can be approved or
-  rejected with a note. Every decision is written to the audit log and the employee is notified.
+- **Attendance review**: flagged events (selfie taken outside the office radius, synced late from the
+  offline queue, or carrying a GPS accuracy worse than ±150 m) can be approved or rejected with a note.
+  Each card shows the exact coordinates as a Google Maps link, the reported accuracy and the distance
+  from the office. Every decision is written to the audit log and the employee is notified.
 - **Reports** with payroll summary (deductions, bonuses, net pay) and **CSV export**.
 - **Policy settings** (office location, radius, work hours, grace, working days, penalties).
 

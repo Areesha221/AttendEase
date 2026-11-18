@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { get, newId, run } from '@/lib/db'
 import { getEmployeeByUserId, getEventsForDate, getSettings } from '@/lib/queries'
+import { GPS_ACCURACY_LIMIT_M } from '@/lib/rules'
 import { distanceMeters, toServerTime, toWorkDate } from '@/lib/time'
 
 type IncomingEvent = {
@@ -169,12 +170,22 @@ export async function POST(request: Request) {
     const locationStatus: 'inside' | 'outside' | 'unavailable' =
       distance === null ? 'unavailable' : distance <= settings.radius_m ? 'inside' : 'outside'
     const verification: 'verified' | 'flagged' | 'pending' =
-      locationStatus === 'inside' ? 'verified' : locationStatus === 'outside' ? 'flagged' : 'pending'
+      locationStatus === 'inside' && !(accuracyM !== null && accuracyM > GPS_ACCURACY_LIMIT_M)
+        ? 'verified'
+        : locationStatus === 'inside'
+          ? 'flagged'
+          : locationStatus === 'outside'
+            ? 'flagged'
+            : 'pending'
     const reasonParts: string[] = []
     if (locationStatus === 'outside') {
       reasonParts.push(`Outside the office radius (${distance} m > ${settings.radius_m} m)`)
     } else if (locationStatus === 'unavailable') {
       reasonParts.push('Location unavailable on the device')
+    } else if (accuracyM !== null && accuracyM > GPS_ACCURACY_LIMIT_M) {
+      reasonParts.push(
+        `GPS accuracy ±${Math.round(accuracyM)} m is too low to confirm the office radius`,
+      )
     }
     if (offlineCapture) reasonParts.push('Captured offline — device date/time used')
     const reason = reasonParts.length ? reasonParts.join(' · ') : null

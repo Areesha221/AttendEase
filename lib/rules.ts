@@ -37,6 +37,13 @@ export const TONE_CLASSES: Record<string, string> = {
   slate: 'bg-slate-100 text-slate-600 ring-slate-200',
 }
 
+/**
+ * GPS fixes with a reported accuracy worse than this cannot reliably prove
+ * the employee was inside a ~100 m office radius, so they are flagged for the
+ * boss even when the coordinates happen to land inside the geo-fence.
+ */
+export const GPS_ACCURACY_LIMIT_M = 150
+
 export type AttendanceEvent = {
   id: string
   event_id: string

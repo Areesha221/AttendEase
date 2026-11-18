@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { AlertTriangle, Camera, MapPin, ScanFace } from "lucide-react";
+import { AlertTriangle, Camera, ExternalLink, MapPin, ScanFace } from "lucide-react";
 import AttendanceReview from "@/components/attendance-review";
 import PhotoReview from "@/components/photo-review";
-import { TONE_CLASSES } from "@/lib/rules";
+import { GPS_ACCURACY_LIMIT_M, TONE_CLASSES } from "@/lib/rules";
 import { listDayAttendance, listReviewQueue } from "@/lib/queries";
 import { formatDateHuman, formatStamp12, toWorkDate } from "@/lib/time";
 import { requireBoss } from "@/lib/session";
@@ -155,11 +155,34 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                   <span className="badge bg-slate-100 text-slate-600 ring-slate-200">
                     {event.distance_m !== null ? `${event.distance_m} m` : "no GPS"}
                   </span>
+                  {event.accuracy_m !== null && (
+                    <span
+                      className={`badge ${
+                        event.accuracy_m > GPS_ACCURACY_LIMIT_M
+                          ? TONE_CLASSES.yellow
+                          : "bg-slate-100 text-slate-600 ring-slate-200"
+                      }`}
+                    >
+                      ±{Math.round(event.accuracy_m)} m GPS
+                    </span>
+                  )}
                 </div>
                 {event.reason && (
                   <p className="mt-1 flex items-center gap-1 text-[11px] text-rose-600">
                     <AlertTriangle className="h-3 w-3" /> {event.reason}
                   </p>
+                )}
+                {event.latitude !== null && event.longitude !== null && (
+                  <a
+                    href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline"
+                  >
+                    <MapPin className="h-3 w-3" />
+                    {event.latitude.toFixed(5)}, {event.longitude.toFixed(5)}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 )}
                 {needsReview && reviewed && (
                   <div className="mt-2 border-t border-slate-100 pt-2">
@@ -190,10 +213,11 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
       </section>
 
       <p className="mt-4 text-[11px] text-slate-500">
-        Tip: click any selfie to review it full size. Records marked “flagged” were captured outside the office
-        radius; “pending sync” events came from a past offline queue. Use <strong>Approve</strong> if the event is
-        valid, or <strong>Reject</strong> if it should not count. Every decision is written to the audit log and the
-        employee is notified.
+        Tip: click any selfie to review it full size, and tap the coordinates to open the exact capture point in
+        Google Maps. Records marked “flagged” were captured outside the office radius, synced late from the offline
+        queue, or came with a GPS accuracy worse than ±<strong>{GPS_ACCURACY_LIMIT_M} m</strong>. Use{" "}
+        <strong>Approve</strong> if the event is valid, or <strong>Reject</strong> if it should not count. Every
+        decision is written to the audit log and the employee is notified.
       </p>
     </main>
   );

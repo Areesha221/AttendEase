@@ -31,7 +31,7 @@ export default async function BossHomePage() {
   const overview = await getBossOverview();
   const pendingLeaves = await listLeaves({ status: "pending", limit: 5 });
   const audit = await listAuditLogs(6);
-  const notifications = await listNotifications(session.userId, 3);
+  const notifications = await listNotifications(session.userId, 3, { includeBroadcasts: true });
   const trend = await getMonthlyTrend();
   const liveFeed = (await listDayAttendance()).slice(0, 6);
 

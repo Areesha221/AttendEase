@@ -433,16 +433,28 @@ export async function countLeavesOnDate(workDate: string): Promise<number> {
 
 // ---------------- notifications & audit ----------------
 
-export async function listNotifications(userId: string, limit = 10): Promise<NotificationRow[]> {
+export async function listNotifications(
+  userId: string,
+  limit = 10,
+  options: { includeBroadcasts?: boolean } = {},
+): Promise<NotificationRow[]> {
+  // Broadcast rows (user_id IS NULL) are company/administrator notices — e.g.
+  // "X recorded 2 attendance events". They must only be shown to the boss,
+  // never to every employee's own inbox.
+  const where = options.includeBroadcasts ? '(user_id IS NULL OR user_id = ?)' : 'user_id = ?'
   return all<NotificationRow>(
-    `SELECT * FROM notifications WHERE user_id IS NULL OR user_id = ? ORDER BY created_at DESC LIMIT ${limit}`,
+    `SELECT * FROM notifications WHERE ${where} ORDER BY created_at DESC LIMIT ${limit}`,
     [userId],
   )
 }
 
-export async function countUnreadNotifications(userId: string): Promise<number> {
+export async function countUnreadNotifications(
+  userId: string,
+  options: { includeBroadcasts?: boolean } = {},
+): Promise<number> {
+  const where = options.includeBroadcasts ? '(user_id IS NULL OR user_id = ?)' : 'user_id = ?'
   const row = await get<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM notifications WHERE (user_id IS NULL OR user_id = ?) AND is_read = 0`,
+    `SELECT COUNT(*) AS count FROM notifications WHERE ${where} AND is_read = 0`,
     [userId],
   )
   return row?.count ?? 0
