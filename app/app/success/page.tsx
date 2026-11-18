@@ -13,6 +13,12 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
   const status = typeof params.status === "string" ? params.status : "unavailable";
   const distance = typeof params.distance === "string" && params.distance ? params.distance : null;
   const flagged = !offline && (params.verification === "flagged" || params.verification === "pending");
+  const fraud = typeof params.fraud === "string" ? params.fraud : "";
+  const reviewNote = fraud.includes("duplicate_selfie")
+    ? "This event was flagged for administrator review because the selfie looked identical to one you sent earlier. If that was a mistake it will be approved; repeated reuse of the same photo can be treated as a false record."
+    : fraud.includes("impossible_travel")
+      ? "This event was flagged for administrator review because the location was too far from your previous capture to be possible in the time between. Your boss will check it before it counts."
+      : "This event was flagged for administrator review because the GPS reading was not strong enough to confirm the office radius. It is recorded, but it only counts as attendance after your boss approves it.";
 
   const isCheckIn = type === "check_in";
   const title = isCheckIn ? "Check-in recorded" : "Check-out recorded";
@@ -60,8 +66,7 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
 
         {flagged && (
           <p className="mt-4 rounded-xl bg-amber-50 p-3 text-left text-xs font-medium text-amber-800 ring-1 ring-amber-200">
-            This event was flagged for administrator review because the GPS reading was not strong enough to confirm
-            the office radius. It is recorded, but it only counts as attendance after your boss approves it.
+            {reviewNote}
           </p>
         )}
 

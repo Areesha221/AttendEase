@@ -184,6 +184,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
           locationStatus?: string;
           distanceM?: number | null;
           verification?: string;
+          fraudFlags?: string;
         }[];
       };
       const result = data.results?.[0];
@@ -199,6 +200,7 @@ export default function SelfieCapture({ type, office, employeeName, employeeCode
         status: result.locationStatus ?? "unavailable",
         distance: result.distanceM !== null && result.distanceM !== undefined ? String(result.distanceM) : "",
         verification: result.verification ?? "",
+        fraud: result.fraudFlags ?? "",
       });
       router.push(`/app/success?${params}`);
     } catch {

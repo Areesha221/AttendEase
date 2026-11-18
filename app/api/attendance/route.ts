@@ -17,8 +17,21 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/session'
 import { get, newId, run } from '@/lib/db'
-import { getEmployeeByUserId, getEventsForDate, getSettings } from '@/lib/queries'
+import {
+  getEmployeeByUserId,
+  getEventsForDate,
+  getSettings,
+  listCaptureSignals,
+} from '@/lib/queries'
 import { GPS_ACCURACY_LIMIT_M } from '@/lib/rules'
+import {
+  describeDuplicate,
+  describeTravel,
+  findDuplicateSelfie,
+  findImpossibleTravel,
+  type FraudFlag,
+} from '@/lib/fraud'
+import { photoFingerprint } from '@/lib/photo-hash'
 import { distanceMeters, toServerTime, toWorkDate } from '@/lib/time'
 
 type IncomingEvent = {
@@ -41,6 +54,7 @@ type EventResult = {
   distanceM?: number | null
   locationStatus?: 'inside' | 'outside' | 'unavailable'
   verification?: 'verified' | 'flagged' | 'pending'
+  fraudFlags?: string
 }
 
 const numberOrNull = (value: unknown): number | null =>
@@ -169,7 +183,7 @@ export async function POST(request: Request) {
         : null
     const locationStatus: 'inside' | 'outside' | 'unavailable' =
       distance === null ? 'unavailable' : distance <= settings.radius_m ? 'inside' : 'outside'
-    const verification: 'verified' | 'flagged' | 'pending' =
+    const locationVerification: 'verified' | 'flagged' | 'pending' =
       locationStatus === 'inside' && !(accuracyM !== null && accuracyM > GPS_ACCURACY_LIMIT_M)
         ? 'verified'
         : locationStatus === 'inside'
@@ -188,17 +202,43 @@ export async function POST(request: Request) {
       )
     }
     if (offlineCapture) reasonParts.push('Captured offline — device date/time used')
+
+    // ---- anti-fraud checks ----------------------------------------------
+    // Neither check rejects the event: they mark it for human review, because
+    // only the boss can tell a real problem (reused photo, spoofed GPS) from a
+    // harmless coincidence.
+    const fingerprint = await photoFingerprint(photo)
+    const signals = await listCaptureSignals(employee.id, eventServerTime)
+    const fraudFlags: FraudFlag[] = []
+
+    const duplicateSelfie = fingerprint
+      ? findDuplicateSelfie(signals, eventServerTime, fingerprint)
+      : null
+    if (duplicateSelfie) {
+      fraudFlags.push('duplicate_selfie')
+      reasonParts.push(describeDuplicate(duplicateSelfie))
+    }
+
+    const travel = findImpossibleTravel(signals, eventServerTime, latitude, longitude)
+    if (travel) {
+      fraudFlags.push('impossible_travel')
+      reasonParts.push(describeTravel(travel))
+    }
+
+    const verification = fraudFlags.length > 0 ? 'flagged' : locationVerification
+    const fraudFlagsValue = fraudFlags.length > 0 ? fraudFlags.join(',') : null
     const reason = reasonParts.length ? reasonParts.join(' · ') : null
 
-    // Events captured outside the office, or synced late from the offline
-    // queue, land in the boss review queue.
+    // Events captured outside the office, synced late from the offline queue,
+    // or carrying an anti-fraud flag land in the boss review queue.
     const reviewStatus = verification === 'flagged' || offlineCapture ? 'pending' : 'not_required'
 
     await run(
       `INSERT INTO attendance
          (id, event_id, employee_id, type, work_date, server_time, device_time, photo,
-          latitude, longitude, accuracy_m, distance_m, location_status, sync_status, verification, review_status, reason, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?)`,
+          latitude, longitude, accuracy_m, distance_m, location_status, sync_status, verification, review_status, reason,
+          photo_hash, photo_sha, fraud_flags, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'synced', ?, ?, ?, ?, ?, ?, ?)`,
       [
         newId('att'),
         eventId,
@@ -216,6 +256,9 @@ export async function POST(request: Request) {
         verification,
         reviewStatus,
         reason,
+        fingerprint?.dhash ?? null,
+        fingerprint?.sha ?? null,
+        fraudFlagsValue,
         serverTime,
       ],
     )
@@ -230,7 +273,7 @@ export async function POST(request: Request) {
         eventId,
         `${type === 'check_in' ? 'Check-in' : 'Check-out'} ${eventWorkDate} at ${eventServerTime.slice(11, 16)} — ${locationStatus}${
           offlineCapture ? ' (offline sync)' : ''
-        }`,
+        }${fraudFlags.length ? ` · anti-fraud: ${fraudFlags.join(', ')}` : ''}`,
         serverTime,
       ],
     )
@@ -246,6 +289,7 @@ export async function POST(request: Request) {
       distanceM: distance,
       locationStatus,
       verification,
+      fraudFlags: fraudFlagsValue ?? undefined,
     })
   }
 

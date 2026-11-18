@@ -24,6 +24,7 @@ import {
   type MonthSummary,
   type PayrollBreakdown,
 } from '@/lib/rules'
+import type { CaptureSignal } from '@/lib/fraud'
 
 export type Settings = {
   id: number
@@ -697,6 +698,28 @@ export async function listReviewQueue(limit = 100): Promise<LiveEvent[]> {
      WHERE a.review_status = 'pending'
      ORDER BY a.work_date DESC, a.server_time DESC
      LIMIT ${limit}`,
+  )
+}
+
+/**
+ * Earlier captures for one employee, newest first. Used by the anti-fraud
+ * checks (duplicate selfie hash, impossible travel). Only the few columns the
+ * checks need are selected so a selfie is never loaded just to compare it.
+ */
+export async function listCaptureSignals(
+  employeeId: string,
+  upToServerTime: string,
+  limit = 25,
+): Promise<CaptureSignal[]> {
+  return all<CaptureSignal>(
+    `SELECT event_id, type, work_date, server_time, latitude, longitude, photo_hash, photo_sha
+     FROM attendance
+     WHERE employee_id = ?
+       AND server_time <= ?
+       AND review_status <> 'rejected'
+     ORDER BY server_time DESC
+     LIMIT ${limit}`,
+    [employeeId, upToServerTime],
   )
 }
 

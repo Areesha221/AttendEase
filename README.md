@@ -13,6 +13,9 @@ database, and locally against a plain SQLite file.
 
 ### Employee
 - **Selfie check-in / check-out** with live camera capture.
+- **Anti-fraud checks**: every selfie gets a perceptual hash (dHash) compared with the employee's earlier
+  captures — reusing the same photo is flagged — and two GPS fixes that would need impossible travel
+  (over 250 km/h) between them are flagged too. Flags never block a check-in; they go to the boss.
 - **GPS + office-radius verification** (inside/outside status, accuracy, distance, map link for admins).
 - **Server time** always recorded in **Asia/Karachi (PKT)**, with late/early detection and a grace period.
 - **Attendance history** with status badges (present / late / half-day / absent). Days **before the
@@ -28,9 +31,10 @@ database, and locally against a plain SQLite file.
 - **Employees** directory (with a **Show inactive** toggle) + per-employee detail with photo review.
 - **Leave approvals** (approve / reject with reason) that feed back into attendance.
 - **Attendance review**: flagged events (selfie taken outside the office radius, synced late from the
-  offline queue, or carrying a GPS accuracy worse than ±150 m) can be approved or rejected with a note.
-  Each card shows the exact coordinates as a Google Maps link, the reported accuracy and the distance
-  from the office. Every decision is written to the audit log and the employee is notified.
+  offline queue, carrying a GPS accuracy worse than ±150 m, reusing an earlier selfie, or showing
+  impossible travel) can be approved or rejected with a note. Each card shows the exact coordinates as a
+  Google Maps link, the reported accuracy, the distance from the office and any anti-fraud badges.
+  Every decision is written to the audit log and the employee is notified.
 - **Reports** with payroll summary (deductions, bonuses, net pay) and **CSV export**.
 - **Policy settings** (office location, radius, work hours, grace, working days, penalties).
 

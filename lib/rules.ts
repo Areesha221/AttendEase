@@ -65,6 +65,9 @@ export type AttendanceEvent = {
   reviewed_by: string | null
   reviewed_at: string | null
   reason: string | null
+  photo_hash: string | null
+  photo_sha: string | null
+  fraud_flags: string | null
 }
 
 export type PolicyLike = {

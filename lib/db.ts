@@ -92,6 +92,10 @@ async function migrate(client: Client): Promise<void> {
   await addColumn('review_note', 'TEXT')
   await addColumn('reviewed_by', 'TEXT')
   await addColumn('reviewed_at', 'TEXT')
+  // Anti-fraud fingerprints (duplicate selfie / impossible travel).
+  await addColumn('photo_hash', 'TEXT')
+  await addColumn('photo_sha', 'TEXT')
+  await addColumn('fraud_flags', 'TEXT')
 
   // Flagged / outside-office events (including ones captured before the
   // review feature existed) need a boss decision. Events still waiting to

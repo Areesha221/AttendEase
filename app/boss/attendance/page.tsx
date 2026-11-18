@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { AlertTriangle, Camera, ExternalLink, MapPin, ScanFace } from "lucide-react";
+import { AlertTriangle, Camera, ExternalLink, MapPin, ScanFace, ShieldAlert } from "lucide-react";
 import AttendanceReview from "@/components/attendance-review";
 import PhotoReview from "@/components/photo-review";
 import { GPS_ACCURACY_LIMIT_M, TONE_CLASSES } from "@/lib/rules";
+import { fraudFlagLabels } from "@/lib/fraud";
 import { listDayAttendance, listReviewQueue } from "@/lib/queries";
 import { formatDateHuman, formatStamp12, toWorkDate } from "@/lib/time";
 import { requireBoss } from "@/lib/session";
@@ -166,6 +167,11 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                       ±{Math.round(event.accuracy_m)} m GPS
                     </span>
                   )}
+                  {fraudFlagLabels(event.fraud_flags).map((label) => (
+                    <span key={label} className={`badge ${TONE_CLASSES.red}`}>
+                      <ShieldAlert className="h-3 w-3" /> {label}
+                    </span>
+                  ))}
                 </div>
                 {event.reason && (
                   <p className="mt-1 flex items-center gap-1 text-[11px] text-rose-600">
@@ -215,9 +221,10 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
       <p className="mt-4 text-[11px] text-slate-500">
         Tip: click any selfie to review it full size, and tap the coordinates to open the exact capture point in
         Google Maps. Records marked “flagged” were captured outside the office radius, synced late from the offline
-        queue, or came with a GPS accuracy worse than ±<strong>{GPS_ACCURACY_LIMIT_M} m</strong>. Use{" "}
-        <strong>Approve</strong> if the event is valid, or <strong>Reject</strong> if it should not count. Every
-        decision is written to the audit log and the employee is notified.
+        queue, came with a GPS accuracy worse than ±<strong>{GPS_ACCURACY_LIMIT_M} m</strong>, reused an earlier
+        selfie, or show impossible travel between two captures. Use <strong>Approve</strong> if the event is valid, or{" "}
+        <strong>Reject</strong> if it should not count. Every decision is written to the audit log and the employee is
+        notified.
       </p>
     </main>
   );

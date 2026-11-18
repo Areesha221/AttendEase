@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS attendance (
   reviewed_by     TEXT,                   -- name of the boss who reviewed it
   reviewed_at     TEXT,
   reason          TEXT,                   -- reason if record was manually corrected
+  photo_hash      TEXT,                   -- 64-bit perceptual hash (dHash) of the selfie
+  photo_sha       TEXT,                   -- SHA-256 of the decoded selfie bytes
+  fraud_flags     TEXT,                   -- comma separated: duplicate_selfie, impossible_travel
   created_at      TEXT NOT NULL
 );
 
