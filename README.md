@@ -36,6 +36,11 @@ items exist and which server actions succeed; every page and action re-checks th
   records, the gate and staff accounts are blocked.
 - **Employee** only ever sees `/app` (self-service check-in/out, history, leave, profile).
 
+Every staff role also gets **My attendance** (`/boss/me`): the same selfie + GPS check-in/check-out as
+employees, plus a personal attendance history. Staff attendance profiles are linked to their staff
+account, so they never appear in the employee directory, payroll or company-wide counts. A staff
+member can only ever capture attendance for their own account.
+
 Staff accounts are created by the admin from **Staff accounts → Add a staff account**. Deactivating an
 account blocks sign-in immediately. Every create, activate, deactivate and password reset is written to
 the audit log.

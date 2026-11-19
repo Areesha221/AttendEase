@@ -11,7 +11,7 @@
 import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { get, newId, run } from '@/lib/db'
+import { all, get, newId, run, transaction } from '@/lib/db'
 import { requireAdmin } from '@/lib/session'
 import { toServerTime } from '@/lib/time'
 import { MIN_PASSWORD_LENGTH } from '@/lib/employee-shared'
@@ -19,8 +19,9 @@ import { MIN_PASSWORD_LENGTH } from '@/lib/employee-shared'
 const HASH_ROUNDS = 10
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export const CREATABLE_STAFF_ROLES = ['hr', 'manager'] as const
-export type CreatableStaffRole = (typeof CREATABLE_STAFF_ROLES)[number]
+// A "use server" module may only export async actions, so no runtime values
+// are exported from this file: importing it never raises "found object".
+export type CreatableStaffRole = 'hr' | 'manager'
 
 export type StaffFormState =
   | { error?: string; success?: string; fieldErrors?: Record<string, string> }
@@ -34,6 +35,29 @@ export type StaffAccount = {
   display_name: string | null
   is_active: number
   created_at: string
+}
+
+/**
+ * Staff accounts get their own employee row so they can check in and out from
+ * the "My attendance" page. The row is linked to the staff user, which keeps it
+ * out of the employee directory, payroll and company-wide counts.
+ */
+const STAFF_PROFILE: Record<CreatableStaffRole, { prefix: string; department: string; jobTitle: string }> = {
+  hr: { prefix: 'HR', department: 'Human Resources', jobTitle: 'HR Manager' },
+  manager: { prefix: 'MGR', department: 'Operations', jobTitle: 'Manager' },
+}
+
+async function nextStaffEmployeeCode(role: CreatableStaffRole): Promise<string> {
+  const prefix = STAFF_PROFILE[role].prefix
+  const rows = await all<{ employee_code: string }>(
+    'SELECT employee_code FROM employees WHERE employee_code LIKE ?',
+    [`${prefix}-%`],
+  )
+  const highest = rows.reduce((max, row) => {
+    const value = Number(row.employee_code.slice(prefix.length + 1))
+    return Number.isFinite(value) && value > max ? value : max
+  }, 0)
+  return `${prefix}-${String(highest + 1).padStart(4, '0')}`
 }
 
 async function audit(
@@ -87,19 +111,34 @@ export async function createStaffAction(
     return { error: 'Please fix the highlighted fields.', fieldErrors }
   }
 
+  const staffRole: CreatableStaffRole = role === 'hr' ? 'hr' : 'manager'
   const userId = newId('usr')
-  await run(
-    `INSERT INTO users (id, email, password_hash, role, access_role, display_name, is_active, created_at)
-     VALUES (?, ?, ?, 'employee', ?, ?, 1, ?)`,
-    [userId, email, bcrypt.hashSync(password, HASH_ROUNDS), role, fullName, toServerTime()],
-  )
+  const employeeId = newId('emp')
+  const employeeCode = await nextStaffEmployeeCode(staffRole)
+  const profile = STAFF_PROFILE[staffRole]
+  const now = toServerTime()
+
+  await transaction(async (tx) => {
+    await tx.execute({
+      sql: `INSERT INTO users (id, email, password_hash, role, access_role, display_name, is_active, created_at)
+            VALUES (?, ?, ?, 'employee', ?, ?, 1, ?)`,
+      args: [userId, email, bcrypt.hashSync(password, HASH_ROUNDS), role, fullName, now],
+    })
+    await tx.execute({
+      sql: `INSERT INTO employees (id, user_id, employee_code, full_name, cnic, phone, department, job_title,
+              joining_date, photo, status, monthly_salary, annual_leave_allowance, carry_forward_leave,
+              consent, consent_at, created_at)
+            VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, NULL, 'active', 0, 20, 0, 1, ?, ?)`,
+      args: [employeeId, userId, employeeCode, fullName, profile.department, profile.jobTitle, now.slice(0, 10), now, now],
+    })
+  })
 
   await audit(
     session.userId,
     session.name,
     'create_staff',
     userId,
-    `Created ${role} account for ${fullName} (${email})`,
+    `Created ${role} account for ${fullName} (${email}) with attendance profile ${employeeCode}`,
   )
   revalidateStaff()
   redirect('/boss/team?created=1')
@@ -126,6 +165,7 @@ export async function setStaffStatusAction(formData: FormData): Promise<void> {
   if (!isStaff) return
 
   await run('UPDATE users SET is_active = ? WHERE id = ?', [nextActive, userId])
+  await run('UPDATE employees SET status = ? WHERE user_id = ?', [nextActive ? 'active' : 'inactive', userId])
   await audit(
     session.userId,
     session.name,

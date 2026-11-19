@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireStaff } from "@/lib/session";
 import { ROLE_LABELS } from "@/lib/roles";
 import BossNav from "@/components/boss-nav";
+import OfflineBanner from "@/components/offline-banner";
 import SignOutForm from "@/components/sign-out-form";
 
 export default async function BossLayout({ children }: LayoutProps<"/boss">) {
@@ -29,6 +30,8 @@ export default async function BossLayout({ children }: LayoutProps<"/boss">) {
           <BossNav role={session.role} />
         </div>
       </header>
+
+      <OfflineBanner />
 
       <div className="flex-1">{children}</div>
     </>

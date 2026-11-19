@@ -27,6 +27,8 @@ type Props = {
   gateRequired?: boolean;
   /** Code pre-filled from a scanned QR link. */
   initialGateCode?: string;
+  /** Where to go after a successful capture. Staff use /boss/me/success. */
+  successHref?: string;
 };
 
 type CameraState = "idle" | "starting" | "ready" | "error";
@@ -39,6 +41,7 @@ export default function SelfieCapture({
   employeeCode,
   gateRequired = false,
   initialGateCode = "",
+  successHref = "/app/success",
 }: Props) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -223,7 +226,7 @@ export default function SelfieCapture({
         fraud: result.fraudFlags ?? "",
         gate: result.gateStatus ?? "",
       });
-      router.push(`/app/success?${params}`);
+      router.push(`${successHref}?${params}`);
     } catch {
       enqueue(event);
       const params = new URLSearchParams({
@@ -232,7 +235,7 @@ export default function SelfieCapture({
         status: location ? (inside ? "inside" : "outside") : "unavailable",
         distance: distance !== null ? String(distance) : "",
       });
-      router.push(`/app/success?${params}`);
+      router.push(`${successHref}?${params}`);
     }
   };
 

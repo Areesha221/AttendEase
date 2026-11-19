@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarCheck,
+  Clock,
   GraduationCap,
   LayoutDashboard,
   QrCode,
@@ -26,6 +27,7 @@ type LinkItem = {
 
 const LINKS: LinkItem[] = [
   { href: "/boss", label: "Dashboard", icon: LayoutDashboard, show: () => true },
+  { href: "/boss/me", label: "My attendance", icon: Clock, show: () => true },
   { href: "/boss/assistant", label: "Q&A", icon: Search, show: () => true },
   { href: "/boss/employees", label: "Employees", icon: Users, show: canManageEmployees },
   { href: "/boss/attendance", label: "Attendance", icon: ScanFace, show: () => true },

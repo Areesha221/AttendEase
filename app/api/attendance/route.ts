@@ -84,10 +84,12 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'You are not signed in.' }, { status: 401 })
   }
-  if (session.role !== 'employee') {
-    return NextResponse.json({ error: 'Only employee accounts can record attendance.' }, { status: 403 })
-  }
 
+  // Every signed-in person with a linked employee profile may record
+  // attendance. Regular employees use /app, while the admin, HR and manager
+  // use "My attendance" in the staff desk. The session alone decides whose
+  // record it is, so a staff account can never record attendance for someone
+  // else.
   const employee = await getEmployeeByUserId(session.userId)
   if (!employee) {
     return NextResponse.json({ error: 'No employee profile is linked to this account.' }, { status: 400 })
