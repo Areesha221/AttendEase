@@ -34,10 +34,13 @@ export default async function TeamPage(props: {
   const created = Array.isArray(params.created) ? params.created[0] === "1" : params.created === "1";
 
   const accounts = await all<StaffAccount>(
-    `SELECT id, email, role, access_role, display_name, is_active, created_at
-     FROM users
-     WHERE access_role IN ('admin', 'hr', 'manager') OR role = 'boss'
-     ORDER BY created_at ASC`,
+    `SELECT u.id, u.email, u.role, u.access_role,
+            COALESCE(NULLIF(u.display_name, ''), e.full_name) AS display_name,
+            u.is_active, u.created_at
+     FROM users u
+     LEFT JOIN employees e ON e.user_id = u.id
+     WHERE u.access_role IN ('admin', 'hr', 'manager') OR u.role = 'boss'
+     ORDER BY u.created_at ASC`,
   );
 
   return (
