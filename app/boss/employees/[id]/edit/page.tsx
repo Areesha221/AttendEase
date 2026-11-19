@@ -4,15 +4,17 @@ import { ArrowLeft, Pencil } from "lucide-react";
 import EmployeeForm from "@/components/employee-form";
 import { getEmployeeById, getUserById, listDepartments } from "@/lib/queries";
 import { requireHr } from "@/lib/session";
+import { isStaffLinkedEmployee } from "@/lib/employees";
 
 export const metadata = { title: "Edit employee — AttendEase" };
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireHr();
+  const session = await requireHr();
 
   const { id } = await params;
   const employee = await getEmployeeById(id);
   if (!employee) notFound();
+  if (session.role !== "admin" && (await isStaffLinkedEmployee(employee.id))) notFound();
 
   const user = employee.user_id ? await getUserById(employee.user_id) : undefined;
   const departments = await listDepartments();

@@ -55,6 +55,21 @@ function revalidateEmployee(employeeId?: string): void {
   if (employeeId) revalidatePath(`/boss/employees/${employeeId}`)
 }
 
+/**
+ * True when the employee row belongs to a staff login (admin, HR or manager).
+ * HR must not edit, deactivate or reset those records; only the admin may.
+ */
+export async function isStaffLinkedEmployee(employeeId: string): Promise<boolean> {
+  const row = await get<{ role: string; access_role: string | null }>(
+    `SELECT u.role, u.access_role
+     FROM employees e JOIN users u ON u.id = e.user_id
+     WHERE e.id = ?`,
+    [employeeId],
+  )
+  if (!row) return false
+  return row.role === 'boss' || (row.access_role !== null && row.access_role !== '')
+}
+
 // ---------------- create ----------------
 
 export async function createEmployeeAction(
@@ -133,6 +148,9 @@ export async function updateEmployeeAction(
     [employeeId],
   )
   if (!employee) return { error: 'That employee could not be found.' }
+  if (session.role !== 'admin' && (await isStaffLinkedEmployee(employeeId))) {
+    return { error: 'This record belongs to a staff account. Only the administrator can edit it.' }
+  }
 
   const result = validateEmployeeInput(formData, { requirePassword: false })
   if ('fieldErrors' in result) {
@@ -206,6 +224,7 @@ export async function setEmployeeStatusAction(formData: FormData): Promise<void>
   )
   if (!employee) return
   if (employee.user_id === session.userId) return // never lock yourself out
+  if (session.role !== 'admin' && (await isStaffLinkedEmployee(employeeId))) return
 
   await transaction(async (tx) => {
     await tx.execute({ sql: 'UPDATE employees SET status = ? WHERE id = ?', args: [next, employeeId] })
@@ -292,6 +311,9 @@ export async function resetEmployeePasswordAction(
     [employeeId],
   )
   if (!employee || !employee.user_id) return { error: 'This employee has no linked login account.' }
+  if (session.role !== 'admin' && (await isStaffLinkedEmployee(employeeId))) {
+    return { error: 'This record belongs to a staff account. Only the administrator can reset it.' }
+  }
 
   const error = validateNewPassword(password, confirm)
   if (error) return { error }

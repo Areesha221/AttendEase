@@ -24,6 +24,7 @@ import {
   weekdayName,
 } from "@/lib/time";
 import { requireHr } from "@/lib/session";
+import { isStaffLinkedEmployee } from "@/lib/employees";
 import { notFound } from "next/navigation";
 
 function shiftMonth(month: string, delta: number): string {
@@ -37,6 +38,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
   const { id } = await props.params;
   const employee = await getEmployeeById(id);
   if (!employee) notFound();
+  if (session.role !== "admin" && (await isStaffLinkedEmployee(employee.id))) notFound();
 
   const params = await props.searchParams;
   const requested = typeof params.month === "string" ? params.month : "";

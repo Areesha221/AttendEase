@@ -163,33 +163,45 @@ export async function getUserById(id: string): Promise<{ id: string; email: stri
 }
 
 export async function listEmployees(options: { search?: string; department?: string; includeInactive?: boolean } = {}): Promise<Employee[]> {
-  const clauses: string[] = []
+  // Staff accounts (the admin/owner, HR and managers) are not employees: they
+  // must never appear in the employee directory, payroll, absence counts or
+  // reports. Only real employee accounts have role='employee' and no access_role.
+  const clauses: string[] = [
+    `(u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
+  ]
   const params: (string | number)[] = []
 
-  if (!options.includeInactive) clauses.push(`status = 'active'`)
+  if (!options.includeInactive) clauses.push(`e.status = 'active'`)
   if (options.department && options.department !== 'all') {
-    clauses.push('department = ?')
+    clauses.push('e.department = ?')
     params.push(options.department)
   }
   if (options.search) {
-    clauses.push('(full_name LIKE ? OR employee_code LIKE ? OR phone LIKE ? OR cnic LIKE ? OR department LIKE ?)')
+    clauses.push('(e.full_name LIKE ? OR e.employee_code LIKE ? OR e.phone LIKE ? OR e.cnic LIKE ? OR e.department LIKE ?)')
     const like = `%${options.search}%`
     params.push(like, like, like, like, like)
   }
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
-  return all<Employee>(`SELECT * FROM employees ${where} ORDER BY employee_code`, params)
+  return all<Employee>(
+    `SELECT e.* FROM employees e
+     LEFT JOIN users u ON u.id = e.user_id
+     ${where}
+     ORDER BY e.employee_code`,
+    params,
+  )
 }
 
 /**
- * Active employees who are not the boss/admin account. Team lists (absent,
- * still working, late ranking) must never include the owner's own record.
+ * Active employees who are not a staff account. Team lists (absent, still
+ * working, late ranking) must never include the owner's own record.
  */
 export async function listTeamEmployees(): Promise<Employee[]> {
   return all<Employee>(
     `SELECT e.* FROM employees e
      LEFT JOIN users u ON u.id = e.user_id
-     WHERE e.status = 'active' AND (u.role IS NULL OR u.role = 'employee')
+     WHERE e.status = 'active'
+       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
      ORDER BY e.employee_code`,
   )
 }
