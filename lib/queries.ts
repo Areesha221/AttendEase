@@ -261,7 +261,14 @@ export async function getLastEvent(employeeId: string): Promise<AttendanceEvent 
 export async function countPendingSync(employeeId?: string): Promise<number> {
   const row = employeeId
     ? await get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending' AND employee_id = ?`, [employeeId])
-    : await get<{ count: number }>(`SELECT COUNT(*) AS count FROM attendance WHERE sync_status = 'pending'`)
+    : await get<{ count: number }>(
+        `SELECT COUNT(*) AS count
+         FROM attendance a
+         JOIN employees e ON e.id = a.employee_id
+         LEFT JOIN users u ON u.id = e.user_id
+         WHERE a.sync_status = 'pending'
+           AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
+      )
   return row?.count ?? 0
 }
 
@@ -657,7 +664,9 @@ export async function listAttendanceLog(options: {
     `SELECT a.*, e.full_name AS employee_name, e.employee_code, e.department
      FROM attendance a
      JOIN employees e ON e.id = a.employee_id
+     LEFT JOIN users u ON u.id = e.user_id
      WHERE ${clauses.join(' AND ')}
+       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
      ORDER BY a.server_time DESC
      LIMIT ${options.limit ?? 300}`,
     params,
@@ -709,7 +718,9 @@ export async function listDayAttendance(workDate: string = toWorkDate()): Promis
     `SELECT a.*, e.full_name AS employee_name, e.employee_code, e.department, e.job_title
      FROM attendance a
      JOIN employees e ON e.id = a.employee_id
+     LEFT JOIN users u ON u.id = e.user_id
      WHERE a.work_date = ?
+       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
      ORDER BY a.server_time DESC`,
     [workDate],
   )
@@ -721,7 +732,9 @@ export async function listReviewQueue(limit = 100): Promise<LiveEvent[]> {
     `SELECT a.*, e.full_name AS employee_name, e.employee_code, e.department, e.job_title
      FROM attendance a
      JOIN employees e ON e.id = a.employee_id
+     LEFT JOIN users u ON u.id = e.user_id
      WHERE a.review_status = 'pending'
+       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
      ORDER BY a.work_date DESC, a.server_time DESC
      LIMIT ${limit}`,
   )
@@ -818,7 +831,13 @@ export async function getCompanyStatusTotals(monthAnchor: string = toWorkDate())
 /** Count of attendance events that failed location verification within a range. */
 export async function countFlaggedEvents(start: string, end: string): Promise<number> {
   const row = await get<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM attendance WHERE verification = 'flagged' AND work_date BETWEEN ? AND ?`,
+    `SELECT COUNT(*) AS count
+     FROM attendance a
+     JOIN employees e ON e.id = a.employee_id
+     LEFT JOIN users u ON u.id = e.user_id
+     WHERE a.verification = 'flagged'
+       AND a.work_date BETWEEN ? AND ?
+       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
     [start, end],
   )
   return row?.count ?? 0
