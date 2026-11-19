@@ -99,6 +99,21 @@ async function migrate(client: Client): Promise<void> {
   // Rotating entrance-code result for this capture.
   await addColumn('gate_status', "TEXT NOT NULL DEFAULT 'not_required'")
 
+  // ---- users columns (role-based access) ----
+  const usersInfo = await client.execute('PRAGMA table_info(users)')
+  const usersColumns = usersInfo.rows as unknown as Array<{ name: string }>
+  const addUserColumn = async (name: string, definition: string) => {
+    if (usersColumns.some((column) => column.name === name)) return
+    try {
+      await client.execute(`ALTER TABLE users ADD COLUMN ${name} ${definition}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      if (!/duplicate column/i.test(message)) throw error
+    }
+  }
+  await addUserColumn('access_role', 'TEXT')
+  await addUserColumn('display_name', 'TEXT')
+
   // ---- settings columns ----
   const settingsInfo = await client.execute('PRAGMA table_info(settings)')
   const settingsColumns = settingsInfo.rows as unknown as Array<{ name: string }>

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "AttendEase — Attendance & Workforce Management",
   description:
-    "Employee attendance with selfie + GPS verification, leave management, payroll estimates, boss dashboard and study-abroad guidance.",
+    "Employee attendance with selfie + GPS verification, leave management, payroll estimates, staff dashboard and study-abroad guidance.",
   applicationName: "AttendEase",
   appleWebApp: {
     capable: true,

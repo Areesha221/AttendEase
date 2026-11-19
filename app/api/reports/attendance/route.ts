@@ -1,5 +1,5 @@
 // ============================================================
-// CSV export of the attendance log (boss only).
+// CSV export of the attendance log (admin and manager).
 // GET /api/reports/attendance?start=YYYY-MM-DD&end=YYYY-MM-DD&employee=all
 // ============================================================
 
@@ -15,7 +15,7 @@ const csvCell = (value: unknown): string => {
 
 export async function GET(request: Request) {
   const session = await getSession()
-  if (!session || session.role !== 'boss') {
+  if (!session || (session.role !== 'admin' && session.role !== 'manager')) {
     return new Response('Not authorized.', { status: 403 })
   }
 

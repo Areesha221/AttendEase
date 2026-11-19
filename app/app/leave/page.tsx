@@ -76,7 +76,7 @@ export default async function LeavePage() {
                       </p>
                       {request.reason && <p className="mt-1 text-xs text-slate-500">{request.reason}</p>}
                       {request.comment && (
-                        <p className="mt-1 text-xs text-slate-500">Boss: {request.comment}</p>
+                        <p className="mt-1 text-xs text-slate-500">Reviewer: {request.comment}</p>
                       )}
                     </div>
                     <span className={`badge ${TONE_CLASSES[meta.tone]}`}>{meta.label}</span>

@@ -5,10 +5,10 @@ import StatusBadge from "@/components/status-badge";
 import { getEmployeeDirectory, listDepartments } from "@/lib/queries";
 import { formatPkr } from "@/lib/rules";
 import { formatStamp12 } from "@/lib/time";
-import { requireBoss } from "@/lib/session";
+import { requireHr } from "@/lib/session";
 
 export default async function EmployeesPage(props: PageProps<"/boss/employees">) {
-  await requireBoss();
+  await requireHr();
 
   const params = await props.searchParams;
   const search = typeof params.search === "string" ? params.search : "";
@@ -135,7 +135,7 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
                   <td className="py-3">
                     <Link
                       href={`/boss/employees/${employee.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-900 hover:text-blue-950"
                     >
                       View <ChevronRight className="h-3.5 w-3.5" />
                     </Link>

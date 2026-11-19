@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import EmployeeForm from "@/components/employee-form";
 import { getEmployeeById, getUserById, listDepartments } from "@/lib/queries";
-import { requireBoss } from "@/lib/session";
+import { requireHr } from "@/lib/session";
 
 export const metadata = { title: "Edit employee — AttendEase" };
 
 export default async function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
-  await requireBoss();
+  await requireHr();
 
   const { id } = await params;
   const employee = await getEmployeeById(id);
@@ -27,7 +27,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
       </Link>
 
       <header className="mb-4 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-900 text-white">
           <Pencil className="h-5 w-5" />
         </span>
         <div>

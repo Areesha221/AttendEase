@@ -70,7 +70,7 @@ export default async function ProgramDetailPage({ params }: PageProps<"/careers/
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="badge bg-slate-100 text-slate-700 ring-slate-200">{program.level}</span>
-              <span className="badge bg-indigo-50 text-indigo-700 ring-indigo-200">{program.discipline}</span>
+              <span className="badge bg-blue-50 text-blue-950 ring-blue-200">{program.discipline}</span>
               <span className="badge bg-slate-100 text-slate-600 ring-slate-200">
                 {program.country_flag} {program.country_name}
               </span>

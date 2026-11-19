@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server'
 import { answerQuestion } from '@/lib/assistant'
 import { getSession } from '@/lib/session'
 
-// Read-only question answering for the boss. No writes happen here, and the
-// answer is built from the same queries the dashboard uses.
+// Read-only question answering for staff (admin, HR and manager). No writes
+// happen here, and the answer is built from the same queries the dashboard uses.
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30
 
 const MAX_QUESTION_LENGTH = 300
 
@@ -13,8 +14,8 @@ export async function POST(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'Please sign in again.' }, { status: 401 })
   }
-  if (session.role !== 'boss') {
-    return NextResponse.json({ error: 'The assistant is available to the boss account only.' }, { status: 403 })
+  if (session.role === 'employee') {
+    return NextResponse.json({ error: 'The attendance desk is available to staff accounts only.' }, { status: 403 })
   }
 
   if (!(request.headers.get('content-type') ?? '').includes('application/json')) {
@@ -44,6 +45,16 @@ export async function POST(request: Request) {
     )
   }
 
-  const answer = await answerQuestion(question, session.userId)
-  return NextResponse.json(answer)
+  try {
+    const answer = await answerQuestion(question, session.userId)
+    return NextResponse.json(answer)
+  } catch (error) {
+    // Never let the browser receive an HTML error page: it would break the
+    // JSON reader and show a "json not responded" style message.
+    console.error('assistant question failed', error)
+    return NextResponse.json(
+      { error: 'The attendance data could not be read right now. Please try again in a moment.' },
+      { status: 500 },
+    )
+  }
 }

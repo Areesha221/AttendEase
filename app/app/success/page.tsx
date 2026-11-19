@@ -25,7 +25,7 @@ export default async function SuccessPage(props: PageProps<"/app/success">) {
     flagReasons.length > 0
       ? flagReasons.join(" and ")
       : "the GPS reading was not strong enough to confirm the office radius"
-  }. It is recorded, but it only counts as attendance after your boss approves it.`;
+  }. It is recorded, but it only counts as attendance after a manager approves it.`;
 
   const isCheckIn = type === "check_in";
   const title = isCheckIn ? "Check-in recorded" : "Check-out recorded";

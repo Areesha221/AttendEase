@@ -14,7 +14,7 @@ import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { get, newId, run, transaction } from '@/lib/db'
-import { requireBoss, requireSession } from '@/lib/session'
+import { requireAdmin, requireHr, requireSession } from '@/lib/session'
 import { toServerTime } from '@/lib/time'
 import type { SessionPayload } from '@/lib/session-core'
 import {
@@ -61,7 +61,7 @@ export async function createEmployeeAction(
   _prev: EmployeeFormState,
   formData: FormData,
 ): Promise<EmployeeFormState> {
-  const session = await requireBoss()
+  const session = await requireHr()
 
   const result = validateEmployeeInput(formData, { requirePassword: true })
   if ('fieldErrors' in result) {
@@ -125,7 +125,7 @@ export async function updateEmployeeAction(
   _prev: EmployeeFormState,
   formData: FormData,
 ): Promise<EmployeeFormState> {
-  const session = await requireBoss()
+  const session = await requireHr()
 
   const employeeId = String(formData.get('employee_id') ?? '')
   const employee = await get<{ id: string; user_id: string | null }>(
@@ -194,7 +194,7 @@ export async function updateEmployeeAction(
 // ---------------- activate / deactivate ----------------
 
 export async function setEmployeeStatusAction(formData: FormData): Promise<void> {
-  const session = await requireBoss()
+  const session = await requireHr()
 
   const employeeId = String(formData.get('employee_id') ?? '')
   const next = String(formData.get('status') ?? '')
@@ -240,7 +240,7 @@ export async function setEmployeeStatusAction(formData: FormData): Promise<void>
 // ---------------- hard delete ----------------
 
 export async function deleteEmployeeAction(formData: FormData): Promise<void> {
-  const session = await requireBoss()
+  const session = await requireAdmin()
 
   const employeeId = String(formData.get('employee_id') ?? '')
   const confirm = String(formData.get('confirm') ?? '').trim().toUpperCase()
@@ -281,7 +281,7 @@ export async function resetEmployeePasswordAction(
   _prev: PasswordFormState,
   formData: FormData,
 ): Promise<PasswordFormState> {
-  const session = await requireBoss()
+  const session = await requireHr()
 
   const employeeId = String(formData.get('employee_id') ?? '')
   const password = String(formData.get('password') ?? '')

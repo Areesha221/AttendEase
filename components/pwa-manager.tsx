@@ -77,8 +77,8 @@ export default function PwaManager() {
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4">
-      <div className="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-indigo-200 bg-white p-3.5 shadow-lg">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black text-white">
+      <div className="mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-blue-200 bg-white p-3.5 shadow-lg">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-900 text-sm font-black text-white">
           AE
         </span>
         <div className="flex-1 text-xs">

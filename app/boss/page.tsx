@@ -24,10 +24,13 @@ import {
   listNotifications,
 } from "@/lib/queries";
 import { formatDateHuman, formatStamp12, formatTime12, toClock } from "@/lib/time";
-import { requireBoss } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
+import { canSeeReports } from "@/lib/roles";
 
 export default async function BossHomePage() {
-  const session = await requireBoss();
+  const session = await requireStaff();
+  const seesReports = canSeeReports(session.role);
+  const isAdmin = session.role === "admin";
   const overview = await getBossOverview();
   const pendingLeaves = await listLeaves({ status: "pending", limit: 5 });
   const audit = await listAuditLogs(6);
@@ -38,7 +41,7 @@ export default async function BossHomePage() {
   const stats = [
     { label: "Total employees", value: overview.totalEmployees, tone: "text-slate-900" },
     { label: "Present today", value: overview.presentToday, tone: "text-emerald-600" },
-    { label: "Checked in now", value: overview.checkedInNow, tone: "text-indigo-600" },
+    { label: "Checked in now", value: overview.checkedInNow, tone: "text-blue-900" },
     { label: "Not checked out", value: overview.notCheckedOut, tone: "text-amber-600" },
     { label: "Absent today", value: overview.absentToday, tone: "text-rose-600" },
     { label: "On leave today", value: overview.onLeaveToday, tone: "text-sky-600" },
@@ -51,14 +54,16 @@ export default async function BossHomePage() {
     <main className="mx-auto w-full max-w-6xl px-5 py-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h1 className="text-xl font-black text-slate-900">Boss dashboard</h1>
+          <h1 className="text-xl font-black text-slate-900">Staff dashboard</h1>
           <p className="mt-1 text-sm text-slate-600">
             Live view for {formatDateHuman(overview.workDate)} (Asia/Karachi)
           </p>
         </div>
-        <Link href="/boss/reports" className="btn btn-sm btn-ghost">
-          Open reports <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
+        {seesReports && (
+          <Link href="/boss/reports" className="btn btn-sm btn-ghost">
+            Open reports <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
       </div>
 
       <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -128,7 +133,7 @@ export default async function BossHomePage() {
             <p className="section-title flex items-center gap-2">
               <ScanFace className="h-3.5 w-3.5" /> Live attendance feed (today)
             </p>
-            <Link href="/boss/attendance" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+            <Link href="/boss/attendance" className="text-xs font-semibold text-blue-900 hover:text-blue-950">
               View all
             </Link>
           </div>
@@ -172,7 +177,7 @@ export default async function BossHomePage() {
               <p className="section-title flex items-center gap-2">
                 <CalendarDays className="h-3.5 w-3.5" /> Leave requests to decide
               </p>
-              <Link href="/boss/leave" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+              <Link href="/boss/leave" className="text-xs font-semibold text-blue-900 hover:text-blue-950">
                 Manage
               </Link>
             </div>
@@ -205,22 +210,24 @@ export default async function BossHomePage() {
             </div>
           </div>
 
-          <div className="card">
-            <p className="section-title flex items-center gap-2">
-              <Clock className="h-3.5 w-3.5" /> Recent audit log
-            </p>
-            <ul className="mt-3 space-y-2 text-xs">
-              {audit.map((entry) => (
-                <li key={entry.id} className="rounded-lg border border-slate-200 p-2.5">
-                  <p className="font-semibold text-slate-700">
-                    {entry.actor_name} — {entry.action} {entry.entity}
-                  </p>
-                  <p className="mt-0.5 text-slate-500">{entry.details}</p>
-                  <p className="mt-0.5 text-slate-400">{formatStamp12(entry.created_at)}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {isAdmin && (
+            <div className="card">
+              <p className="section-title flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5" /> Recent audit log
+              </p>
+              <ul className="mt-3 space-y-2 text-xs">
+                {audit.map((entry) => (
+                  <li key={entry.id} className="rounded-lg border border-slate-200 p-2.5">
+                    <p className="font-semibold text-slate-700">
+                      {entry.actor_name} — {entry.action} {entry.entity}
+                    </p>
+                    <p className="mt-0.5 text-slate-500">{entry.details}</p>
+                    <p className="mt-0.5 text-slate-400">{formatStamp12(entry.created_at)}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </section>
 

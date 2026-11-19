@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
  */
 export default async function GateEntryPage(props: PageProps<"/app/gate">) {
   const session = await requireSession();
-  if (session.role === "boss") redirect("/boss/gate");
+  if (session.role !== "employee") redirect("/boss/gate");
 
   const employee = await getEmployeeByUserId(session.userId);
   if (!employee) redirect("/app");

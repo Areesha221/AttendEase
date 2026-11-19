@@ -5,7 +5,7 @@ import LoginForm from "./login-form";
 export default async function LoginPage(props: PageProps<"/login">) {
   const params = await props.searchParams;
   const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-  const initialRole = roleParam === "boss" ? "boss" : "employee";
+  const initialRole = roleParam === "boss" || roleParam === "staff" ? "staff" : "employee";
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-5 py-10">
@@ -15,13 +15,13 @@ export default async function LoginPage(props: PageProps<"/login">) {
 
       <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
         <div>
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-lg font-black text-white shadow-md">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-900 text-lg font-black text-white shadow-md">
             AE
           </span>
           <h1 className="mt-4 text-2xl font-black text-slate-900 sm:text-3xl">Sign in to AttendEase</h1>
           <p className="mt-2 text-sm text-slate-600">
-            Employees check in with a selfie and verified location. Bosses manage attendance, leave
-            and reports. Your role decides what you see.
+            Employees check in with a selfie and verified location. Admin, HR and managers use the
+            staff desk for attendance, leave and reports. Your role decides what you see.
           </p>
 
           <ul className="mt-5 space-y-2 text-sm text-slate-600">

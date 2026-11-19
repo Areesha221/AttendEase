@@ -5,7 +5,7 @@ import { ArrowLeft, ShieldCheck, ShieldOff } from "lucide-react";
 import GateScreen from "@/components/gate-screen";
 import { getSettings } from "@/lib/queries";
 import { gateSnapshot, GATE_STEP_SECONDS } from "@/lib/gate";
-import { requireBoss } from "@/lib/session";
+import { requireHr } from "@/lib/session";
 import { setGateRequirement } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Entrance gate — AttendEase" };
 
 export default async function GatePage() {
-  await requireBoss();
+  await requireHr();
   const settings = await getSettings();
 
   const now = gateSnapshot();

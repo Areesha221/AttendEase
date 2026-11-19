@@ -62,7 +62,7 @@ export default function ProgramCard({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="badge bg-slate-100 text-slate-700 ring-slate-200">{program.level}</span>
-        <span className="badge bg-indigo-50 text-indigo-700 ring-indigo-200">{program.discipline}</span>
+        <span className="badge bg-blue-50 text-blue-950 ring-blue-200">{program.discipline}</span>
         <span className="badge bg-slate-100 text-slate-600 ring-slate-200">{program.country_name}</span>
         {match ? <span className={`badge ${MATCH_TONE[match]}`}>{score}% · {match}</span> : null}
       </div>

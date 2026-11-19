@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs'
 import { redirect } from 'next/navigation'
 import { get, newId, run } from '@/lib/db'
 import { createSession, deleteSession } from '@/lib/session'
+import { effectiveRole } from '@/lib/session-core'
 import { toServerTime } from '@/lib/time'
-import type { Role } from '@/lib/session-core'
 
 export type LoginState = { error?: string; email?: string } | undefined
 
@@ -13,7 +13,9 @@ type UserRow = {
   id: string
   email: string
   password_hash: string
-  role: Role
+  role: string
+  access_role: string | null
+  display_name: string | null
   is_active: number
 }
 
@@ -25,7 +27,10 @@ export async function loginAction(_state: LoginState, formData: FormData): Promi
     return { error: 'Please enter both your email and password.', email }
   }
 
-  const user = await get<UserRow>('SELECT id, email, password_hash, role, is_active FROM users WHERE lower(email) = ?', [email])
+  const user = await get<UserRow>(
+    'SELECT id, email, password_hash, role, access_role, display_name, is_active FROM users WHERE lower(email) = ?',
+    [email],
+  )
 
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return {
@@ -43,21 +48,27 @@ export async function loginAction(_state: LoginState, formData: FormData): Promi
     [user.id],
   )
 
+  const role = effectiveRole(user.role, user.access_role)
+  const displayName =
+    employee?.full_name ??
+    user.display_name?.trim() ??
+    user.email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
+
   await createSession({
     userId: user.id,
     employeeId: employee?.id ?? '',
-    role: user.role,
-    name: employee?.full_name ?? 'Administrator',
-    department: employee?.department ?? 'Management',
+    role,
+    name: displayName,
+    department: employee?.department ?? (role === 'hr' ? 'Human Resources' : role === 'manager' ? 'Operations' : 'Management'),
   })
 
   await run(
     `INSERT INTO audit_logs (id, actor_id, actor_name, action, entity, entity_id, details, created_at)
      VALUES (?, ?, ?, 'login', 'users', ?, ?, ?)`,
-    [newId('audit'), user.id, employee?.full_name ?? 'Administrator', user.id, `Signed in as ${user.role}`, toServerTime()],
+    [newId('audit'), user.id, displayName, user.id, `Signed in as ${role}`, toServerTime()],
   )
 
-  redirect(user.role === 'boss' ? '/boss' : '/app')
+  redirect(role === 'employee' ? '/app' : '/boss')
 }
 
 export async function logoutAction(): Promise<void> {

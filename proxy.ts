@@ -3,7 +3,7 @@ import { SESSION_COOKIE, verifyToken } from "@/lib/session-core";
 
 /**
  * Optimistic route protection (Next.js 16 renamed `middleware` -> `proxy`).
- * Real authorization still happens in the data layer (requireBoss / requireEmployee).
+ * Real authorization still happens in the data layer (requireStaff / requireEmployee).
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -21,14 +21,14 @@ export function proxy(request: NextRequest) {
   }
 
   if (session) {
-    if (session.role === "boss" && isEmployeeArea) {
+    if (session.role !== "employee" && isEmployeeArea) {
       return NextResponse.redirect(new URL("/boss", request.nextUrl));
     }
     if (session.role === "employee" && isBossArea) {
       return NextResponse.redirect(new URL("/app", request.nextUrl));
     }
     if (pathname === "/login") {
-      return NextResponse.redirect(new URL(session.role === "boss" ? "/boss" : "/app", request.nextUrl));
+      return NextResponse.redirect(new URL(session.role === "employee" ? "/app" : "/boss", request.nextUrl));
     }
   }
 

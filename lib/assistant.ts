@@ -9,9 +9,10 @@
 
 import {
   countFlaggedEvents,
+  countPendingSync,
   employeeCount,
-  getBossOverview,
   getCompanyStatusTotals,
+  getDayEvaluations,
   getEmployeeDirectory,
   getLeaveBalance,
   getMonthEvaluations,
@@ -20,6 +21,7 @@ import {
   getSettings,
   listDayAttendance,
   listDepartments,
+  listEmployeeLeaves,
   listEmployees,
   listLeaves,
   listNotifications,
@@ -29,7 +31,7 @@ import {
   type LiveEvent,
 } from '@/lib/queries'
 import { formatPkr } from '@/lib/rules'
-import { formatDateHuman, formatStamp12, minutesOf, monthLabel, startOfMonth, toWorkDate } from '@/lib/time'
+import { formatDateHuman, formatStamp12, minutesOf, monthLabel, shiftDate, startOfMonth, toWorkDate } from '@/lib/time'
 
 // ---------------- answer shape (safe to send to the browser) ----------------
 
@@ -51,11 +53,12 @@ const BASE_SUGGESTIONS = [
   'What needs my review?',
   'Who is late today?',
   'Who is absent today?',
-  'Who is on leave today?',
+  'Who checked out today?',
   'Who has not checked out?',
+  'Yesterday at a glance',
   'Top late employees this month',
   'Payroll this month',
-  'Is the gate code required?',
+  'Office work hours',
 ]
 
 /** Example questions for the empty chat and the "I did not understand" reply. */
@@ -174,11 +177,11 @@ function helpAnswer(): AssistantAnswer {
     summary:
       'I read the same attendance database as your dashboard and reply in plain English. I am read-only: I never edit, approve or delete anything.',
     bullets: [
-      'Today — who is late, absent, on leave, still clocked in, or a full summary.',
-      'This month — late-arrival ranking, company totals and the payroll estimate.',
-      'To-do — attendance waiting for review and leave requests waiting for your decision.',
-      'People — one employee’s month summary or leave balance.',
-      'Policy — whether the entrance gate code is required right now.',
+      'Today or yesterday — who is late, absent, on leave, checked out, still clocked in, or a full day summary.',
+      'This month — late and absence rankings, overtime, perfect attendance and the payroll estimate.',
+      'To-do — attendance waiting for review, leave requests, duplicate selfies and impossible travel.',
+      'People — one employee’s month summary, leave balance or leave history.',
+      'Policy — work hours, office radius, penalties, bonuses and the entrance gate code.',
     ],
     suggestions: buildSuggestions(),
   }
@@ -238,17 +241,17 @@ async function employeeCountAnswer(): Promise<AssistantAnswer> {
   }
 }
 
-async function onLeaveTodayAnswer(workDate: string): Promise<AssistantAnswer> {
+async function onLeaveTodayAnswer(workDate: string, label = 'today'): Promise<AssistantAnswer> {
   const leaves = (await listLeaves({ status: 'approved', limit: 100 })).filter(
     (leave) => leave.start_date <= workDate && leave.end_date >= workDate,
   )
   return {
-    intent: 'on_leave_today',
-    title: `On leave today (${formatDateHuman(workDate)})`,
+    intent: label === 'today' ? 'on_leave_today' : 'on_leave_day',
+    title: `On leave ${label} (${formatDateHuman(workDate)})`,
     summary:
       leaves.length === 0
-        ? 'No one is on approved leave today.'
-        : `${leaves.length} employee${leaves.length === 1 ? ' is' : 's are'} on approved leave today.`,
+        ? `No one is on approved leave ${label}.`
+        : `${leaves.length} employee${leaves.length === 1 ? ' is' : 's are'} on approved leave ${label}.`,
     table:
       leaves.length > 0
         ? {
@@ -358,17 +361,28 @@ async function notCheckedOutAnswer(): Promise<AssistantAnswer> {
   }
 }
 
-async function absentTodayAnswer(workDate: string): Promise<AssistantAnswer> {
-  const [directory, team] = await Promise.all([getEmployeeDirectory(), listTeamEmployees()])
-  const teamIds = new Set(team.map((employee) => employee.id))
-  const rows = directory.filter((row) => teamIds.has(row.id) && row.todayStatus === 'absent')
+/** "today" by default, or the previous working date when the question says "yesterday". */
+function resolveDay(question: string, workDate: string): { date: string; label: string } {
+  if (/\byesterday\b/.test(question)) {
+    return { date: shiftDate(workDate, -1), label: 'yesterday' }
+  }
+  return { date: workDate, label: 'today' }
+}
+
+async function absentOnDateAnswer(workDate: string, label: string): Promise<AssistantAnswer> {
+  const [team, settings] = await Promise.all([listTeamEmployees(), getSettings()])
+  const evaluations = await Promise.all(
+    team.map((employee) => getDayEvaluations(employee.id, workDate, workDate, { settings })),
+  )
+  const rows = team.filter((_, index) => evaluations[index][0]?.status === 'absent')
+
   return {
-    intent: 'absent_today',
-    title: `Absent today (${formatDateHuman(workDate)})`,
+    intent: label === 'today' ? 'absent_today' : 'absent_day',
+    title: `Absent ${label} (${formatDateHuman(workDate)})`,
     summary:
       rows.length === 0
-        ? 'No one is marked absent today. Weekends, holidays and approved leave are not counted as absence.'
-        : `${rows.length} employee${rows.length === 1 ? ' is' : 's are'} marked absent today.`,
+        ? `No one is marked absent ${label}. Weekends, holidays and approved leave are not counted as absence.`
+        : `${rows.length} employee${rows.length === 1 ? ' is' : 's are'} marked absent ${label}.`,
     table:
       rows.length > 0
         ? {
@@ -380,7 +394,7 @@ async function absentTodayAnswer(workDate: string): Promise<AssistantAnswer> {
   }
 }
 
-async function lateTodayAnswer(workDate: string): Promise<AssistantAnswer> {
+async function lateOnDateAnswer(workDate: string, label: string): Promise<AssistantAnswer> {
   const settings = await getSettings()
   const events = await listDayAttendance(workDate)
   const graceLimit = minutesOf(settings.work_start) + settings.grace_minutes
@@ -398,12 +412,12 @@ async function lateTodayAnswer(workDate: string): Promise<AssistantAnswer> {
     .sort((a, b) => a.server_time.localeCompare(b.server_time))
 
   return {
-    intent: 'late_today',
-    title: `Late today (${formatDateHuman(workDate)})`,
+    intent: label === 'today' ? 'late_today' : 'late_day',
+    title: `Late ${label} (${formatDateHuman(workDate)})`,
     summary:
       late.length === 0
-        ? `No late arrivals so far. Work starts at ${settings.work_start} with a ${settings.grace_minutes}-minute grace period.`
-        : `${late.length} employee${late.length === 1 ? ' arrived' : 's arrived'} after the grace period (work starts ${settings.work_start}, grace ${settings.grace_minutes} min).`,
+        ? `No late arrivals ${label}. Work starts at ${settings.work_start} with a ${settings.grace_minutes}-minute grace period.`
+        : `${late.length} employee${late.length === 1 ? ' arrived' : 's arrived'} after the grace period ${label} (work starts ${settings.work_start}, grace ${settings.grace_minutes} min).`,
     table:
       late.length > 0
         ? {
@@ -420,34 +434,85 @@ async function lateTodayAnswer(workDate: string): Promise<AssistantAnswer> {
   }
 }
 
-async function presentTodayAnswer(workDate: string): Promise<AssistantAnswer> {
-  const overview = await getBossOverview(workDate)
+async function checkedOutOnDateAnswer(workDate: string, label: string): Promise<AssistantAnswer> {
+  const events = (await listDayAttendance(workDate)).filter((event) => event.review_status !== 'rejected')
+  const firstIn = new Map<string, LiveEvent>()
+  const firstOut = new Map<string, LiveEvent>()
+
+  for (const event of events) {
+    const target = event.type === 'check_in' ? firstIn : firstOut
+    const current = target.get(event.employee_id)
+    if (!current || event.server_time < current.server_time) target.set(event.employee_id, event)
+  }
+
+  const rows = [...firstOut.values()].sort((a, b) => b.server_time.localeCompare(a.server_time))
+  const stillIn = [...firstIn.keys()].filter((employeeId) => !firstOut.has(employeeId))
+
   return {
-    intent: 'present_today',
-    title: `Today at a glance (${formatDateHuman(workDate)})`,
-    summary: `${overview.presentToday} of ${overview.totalEmployees} employees have checked in today.`,
-    bullets: [
-      `Present: ${overview.presentToday}`,
-      `Late: ${overview.lateToday}`,
-      `Still clocked in: ${overview.checkedInNow}`,
-      `Not checked out yet: ${overview.notCheckedOut}`,
-      `Absent: ${overview.absentToday}`,
-      `On approved leave: ${overview.onLeaveToday}`,
-      `Pending leave requests: ${overview.pendingLeaves}`,
-      `Month-to-date attendance: ${overview.attendancePercentage}%`,
-    ],
+    intent: label === 'today' ? 'checked_out_today' : 'checked_out_day',
+    title: `Check-outs ${label} (${formatDateHuman(workDate)})`,
+    summary:
+      rows.length === 0
+        ? `No check-outs recorded ${label}.`
+        : `${rows.length} employee${rows.length === 1 ? ' has' : 's have'} checked out ${label}${
+            stillIn.length > 0 ? `; ${stillIn.length} still had no check-out.` : '.'
+          }`,
     table:
-      overview.departmentTrends.length > 0
+      rows.length > 0
         ? {
-            columns: ['Department', 'Employees', 'Present', 'Late'],
-            rows: overview.departmentTrends.map((row) => [
-              row.department,
-              String(row.employees),
-              `${row.percentage}%`,
-              String(row.late),
+            columns: ['Employee', 'Department', 'Checked in', 'Checked out'],
+            rows: rows.map((event) => [
+              `${event.employee_name} (${event.employee_code})`,
+              event.department ?? 'Unassigned',
+              formatStamp12(firstIn.get(event.employee_id)?.server_time ?? null),
+              formatStamp12(event.server_time),
             ]),
           }
         : undefined,
+    links: [{ label: 'Open the live attendance monitor', href: '/boss/attendance' }],
+  }
+}
+
+async function daySummaryAnswer(workDate: string, label: string): Promise<AssistantAnswer> {
+  const [team, settings, events] = await Promise.all([
+    listTeamEmployees(),
+    getSettings(),
+    listDayAttendance(workDate),
+  ])
+  const evaluations = await Promise.all(
+    team.map((employee) => getDayEvaluations(employee.id, workDate, workDate, { settings })),
+  )
+  const statuses = evaluations.map((days) => days[0]?.status ?? 'upcoming')
+  const count = (status: string) => statuses.filter((value) => value === status).length
+
+  const accepted = events.filter((event) => event.review_status !== 'rejected')
+  const checkedIn = new Set(accepted.filter((event) => event.type === 'check_in').map((event) => event.employee_id))
+  const checkedOut = new Set(accepted.filter((event) => event.type === 'check_out').map((event) => event.employee_id))
+  const stillIn = [...checkedIn].filter((employeeId) => !checkedOut.has(employeeId)).length
+
+  const late = count('late') + count('pending')
+  const present = count('on_time') + late
+  const absent = count('absent')
+  const leave = count('leave')
+  const nonWorking = count('weekend') + count('holiday')
+
+  return {
+    intent: label === 'today' ? 'present_today' : 'day_summary',
+    title: `${label === 'today' ? 'Today' : 'Yesterday'} at a glance (${formatDateHuman(workDate)})`,
+    summary:
+      nonWorking === statuses.length && statuses.length > 0
+        ? `This was a non-working day (weekend or holiday) for the whole team.`
+        : `${present} of ${team.length} team members were present ${label}.`,
+    bullets: [
+      `Present: ${present}`,
+      `On time: ${count('on_time')}`,
+      `Late: ${late}`,
+      `Absent: ${absent}`,
+      `Approved leave: ${leave}`,
+      `Checked in: ${checkedIn.size}`,
+      `Checked out: ${checkedOut.size}`,
+      `Still without a check-out: ${stillIn}`,
+    ],
     links: [{ label: 'Open the live attendance monitor', href: '/boss/attendance' }],
   }
 }
@@ -545,6 +610,282 @@ async function payrollAnswer(
       `Bonuses: ${formatPkr(totals.bonuses)}`,
     ],
     links: [{ label: 'Open reports', href: '/boss/reports' }],
+  }
+}
+
+async function officePolicyAnswer(): Promise<AssistantAnswer> {
+  const settings = await getSettings()
+  const weekendNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const weekend = settings.weekend_days
+    .split(',')
+    .map((value) => weekendNames[Number(value.trim())])
+    .filter(Boolean)
+    .join(', ')
+
+  return {
+    intent: 'office_policy',
+    title: 'Office and attendance policy',
+    summary: `${settings.office_name}: work day ${settings.work_start}–${settings.work_end} with a ${settings.grace_minutes}-minute grace period.`,
+    bullets: [
+      `Allowed check-in radius: ${settings.radius_m} m`,
+      `Required hours per day: ${settings.required_hours}`,
+      `Weekend: ${weekend || 'none configured'}`,
+      `Working days per month: ${settings.work_days_per_month}`,
+      `Late penalty: ${formatPkr(settings.late_penalty)} per late day`,
+      `Absence deduction: ${settings.absence_deduction_days} day(s) of pay`,
+      `Perfect-attendance bonus: ${formatPkr(settings.perfect_attendance_bonus)}`,
+      `No-late bonus: ${formatPkr(settings.no_late_bonus)}`,
+      `Entrance gate code: ${settings.require_gate_code === 1 ? 'required' : 'optional'}`,
+    ],
+    links: [{ label: 'Open the entrance gate screen', href: '/boss/gate' }],
+  }
+}
+
+async function pendingSyncAnswer(): Promise<AssistantAnswer> {
+  const count = await countPendingSync()
+  return {
+    intent: 'pending_sync',
+    title: 'Offline events waiting to sync',
+    summary:
+      count === 0
+        ? 'Nothing is waiting. Every offline capture has been uploaded.'
+        : `${count} offline attendance event${count === 1 ? ' is' : 's are'} still waiting to sync.`,
+    bullets: [
+      'Offline captures are queued on the phone and uploaded when the connection returns.',
+      'A late upload keeps its original capture time but is marked for review.',
+    ],
+    links: [{ label: 'Open the live attendance monitor', href: '/boss/attendance' }],
+  }
+}
+
+async function fraudFlagsAnswer(kind: 'duplicate_selfie' | 'impossible_travel'): Promise<AssistantAnswer> {
+  const queue = await listReviewQueue(100)
+  const rows = queue.filter((event) => event.fraud_flags?.includes(kind))
+  const label = kind === 'duplicate_selfie' ? 'Duplicate selfie' : 'Impossible travel'
+
+  return {
+    intent: kind === 'duplicate_selfie' ? 'duplicate_selfie' : 'impossible_travel',
+    title: `${label} flags`,
+    summary:
+      rows.length === 0
+        ? `No ${label.toLowerCase()} flags are waiting in the review queue.`
+        : `${rows.length} capture${rows.length === 1 ? ' has' : 's have'} a ${label.toLowerCase()} flag.`,
+    table:
+      rows.length > 0
+        ? {
+            columns: ['Date', 'Employee', 'Type', 'Flag'],
+            rows: rows.map((event) => [
+              formatDateHuman(event.work_date),
+              `${event.employee_name} (${event.employee_code})`,
+              event.type === 'check_in' ? 'Check-in' : 'Check-out',
+              label,
+            ]),
+          }
+        : undefined,
+    links: [{ label: 'Open the review queue', href: '/boss/attendance?filter=review&scope=all' }],
+  }
+}
+
+async function leaveHistoryAnswer(employee: Employee, year: string): Promise<AssistantAnswer> {
+  const leaves = await listEmployeeLeaves(employee.id, year)
+  const approved = leaves.filter((leave) => leave.status === 'approved')
+  const pending = leaves.filter((leave) => leave.status === 'pending' || leave.status === 'submitted')
+
+  return {
+    intent: 'leave_history',
+    title: `${employee.full_name} — leave history ${year}`,
+    summary:
+      leaves.length === 0
+        ? `No leave requests recorded for ${employee.full_name} in ${year}.`
+        : `${leaves.length} request${leaves.length === 1 ? '' : 's'} in ${year}: ${approved.length} approved, ${pending.length} pending.`,
+    table:
+      leaves.length > 0
+        ? {
+            columns: ['Type', 'From', 'To', 'Days', 'Status'],
+            rows: leaves.map((leave) => [
+              titleCase(leave.type),
+              formatDateHuman(leave.start_date),
+              formatDateHuman(leave.end_date),
+              String(leave.days),
+              titleCase(leave.status),
+            ]),
+          }
+        : undefined,
+    links: [{ label: `Open ${employee.full_name.split(' ')[0]}’s profile`, href: `/boss/employees/${employee.id}` }],
+  }
+}
+
+async function perfectAttendanceAnswer(anchor: string, label: string): Promise<AssistantAnswer> {
+  const team = await listTeamEmployees()
+  const rows = await Promise.all(
+    team.map(async (employee) => ({
+      employee,
+      summary: (await getMonthEvaluations(employee.id, anchor)).summary,
+    })),
+  )
+  const perfect = rows.filter(
+    (row) => row.summary.lateDays === 0 && row.summary.absentDays === 0 && row.summary.presentDays > 0,
+  )
+
+  return {
+    intent: 'perfect_attendance',
+    title: `Perfect attendance — ${label}`,
+    summary:
+      perfect.length === 0
+        ? `No employee has perfect attendance in ${label} yet.`
+        : `${perfect.length} employee${perfect.length === 1 ? ' has' : 's have'} no late day and no absence in ${label}.`,
+    table:
+      perfect.length > 0
+        ? {
+            columns: ['Employee', 'Present days', 'On time', 'Worked hours'],
+            rows: perfect.map((row) => [
+              `${row.employee.full_name} (${row.employee.employee_code})`,
+              String(row.summary.presentDays),
+              String(row.summary.onTimeDays),
+              String(row.summary.workedHours),
+            ]),
+          }
+        : undefined,
+    links: [{ label: 'Open reports', href: '/boss/reports' }],
+  }
+}
+
+async function topAbsentAnswer(anchor: string, label: string): Promise<AssistantAnswer> {
+  const team = await listTeamEmployees()
+  const rows = await Promise.all(
+    team.map(async (employee) => ({
+      employee,
+      summary: (await getMonthEvaluations(employee.id, anchor)).summary,
+    })),
+  )
+  const filtered = rows
+    .filter((row) => row.summary.absentDays > 0)
+    .sort((a, b) => b.summary.absentDays - a.summary.absentDays || a.employee.full_name.localeCompare(b.employee.full_name))
+    .slice(0, 10)
+
+  return {
+    intent: 'top_absent',
+    title: `Absences — ${label}`,
+    summary:
+      filtered.length === 0
+        ? `No absences recorded in ${label}.`
+        : `${filtered.length} employee${filtered.length === 1 ? ' has' : 's have'} at least one absent day in ${label}, highest first.`,
+    table:
+      filtered.length > 0
+        ? {
+            columns: ['#', 'Employee', 'Absent days', 'Late days', 'Present days'],
+            rows: filtered.map((row, index) => [
+              String(index + 1),
+              `${row.employee.full_name} (${row.employee.employee_code})`,
+              String(row.summary.absentDays),
+              String(row.summary.lateDays),
+              String(row.summary.presentDays),
+            ]),
+          }
+        : undefined,
+    links: [{ label: 'Open reports', href: '/boss/reports' }],
+  }
+}
+
+async function overtimeAnswer(anchor: string, label: string): Promise<AssistantAnswer> {
+  const team = await listTeamEmployees()
+  const rows = await Promise.all(
+    team.map(async (employee) => ({
+      employee,
+      summary: (await getMonthEvaluations(employee.id, anchor)).summary,
+    })),
+  )
+  const withOvertime = rows
+    .filter((row) => row.summary.overtimeHours > 0)
+    .sort((a, b) => b.summary.overtimeHours - a.summary.overtimeHours)
+
+  return {
+    intent: 'overtime',
+    title: `Overtime — ${label}`,
+    summary:
+      withOvertime.length === 0
+        ? `No overtime recorded in ${label}.`
+        : `${withOvertime.length} employee${withOvertime.length === 1 ? ' has' : 's have'} overtime in ${label}.`,
+    table:
+      withOvertime.length > 0
+        ? {
+            columns: ['Employee', 'Overtime hours', 'Worked hours', 'Present days'],
+            rows: withOvertime.map((row) => [
+              `${row.employee.full_name} (${row.employee.employee_code})`,
+              String(row.summary.overtimeHours),
+              String(row.summary.workedHours),
+              String(row.summary.presentDays),
+            ]),
+          }
+        : undefined,
+    links: [{ label: 'Open reports', href: '/boss/reports' }],
+  }
+}
+
+async function joinedThisMonthAnswer(anchor: string, label: string): Promise<AssistantAnswer> {
+  const month = anchor.slice(0, 7)
+  const team = await listTeamEmployees()
+  const rows = team.filter((employee) => employee.joining_date?.startsWith(month))
+
+  return {
+    intent: 'joined_this_month',
+    title: `New joiners — ${label}`,
+    summary:
+      rows.length === 0
+        ? `No employee joined in ${label}.`
+        : `${rows.length} employee${rows.length === 1 ? ' joined' : 's joined'} in ${label}.`,
+    table:
+      rows.length > 0
+        ? {
+            columns: ['Employee', 'Code', 'Department', 'Joined'],
+            rows: rows.map((row) => [
+              row.full_name,
+              row.employee_code,
+              row.department ?? 'Unassigned',
+              formatDateHuman(row.joining_date),
+            ]),
+          }
+        : undefined,
+    links: [{ label: 'Open the employee directory', href: '/boss/employees' }],
+  }
+}
+
+async function departmentHeadcountAnswer(): Promise<AssistantAnswer> {
+  const team = await listTeamEmployees()
+  const counts = new Map<string, number>()
+  for (const employee of team) {
+    const department = employee.department ?? 'Unassigned'
+    counts.set(department, (counts.get(department) ?? 0) + 1)
+  }
+  const rows = [...counts.entries()].sort((a, b) => b[1] - a[1])
+
+  return {
+    intent: 'department_headcount',
+    title: 'Headcount by department',
+    summary: `${team.length} active team member${team.length === 1 ? '' : 's'} across ${rows.length} department${rows.length === 1 ? '' : 's'}.`,
+    table: rows.length > 0 ? { columns: ['Department', 'Employees'], rows: rows.map(([name, count]) => [name, String(count)]) } : undefined,
+    links: [{ label: 'Open the employee directory', href: '/boss/employees' }],
+  }
+}
+
+async function inactiveEmployeesAnswer(): Promise<AssistantAnswer> {
+  const employees = await listEmployees({ includeInactive: true })
+  const rows = employees.filter((employee) => employee.status !== 'active')
+  return {
+    intent: 'inactive_employees',
+    title: 'Inactive employees',
+    summary:
+      rows.length === 0
+        ? 'No employee account is inactive.'
+        : `${rows.length} employee account${rows.length === 1 ? ' is' : 's are'} inactive.`,
+    table:
+      rows.length > 0
+        ? {
+            columns: ['Employee', 'Code', 'Department'],
+            rows: rows.map((row) => [row.full_name, row.employee_code, row.department ?? 'Unassigned']),
+          }
+        : undefined,
+    links: [{ label: 'Open the employee directory', href: '/boss/employees?status=inactive' }],
   }
 }
 
@@ -682,9 +1023,68 @@ export async function answerQuestion(rawQuestion: string, userId: string): Promi
 
   const workDate = toWorkDate()
   const month = resolveMonth(question, workDate)
+  const day = resolveDay(question, workDate)
 
-  if (hasAny(question, ['on leave today', 'who is on leave', 'leave today', 'on leave right now'])) {
-    return onLeaveTodayAnswer(workDate)
+  // ---- policy / operations ----
+  if (
+    hasAny(question, [
+      'work hours',
+      'office hours',
+      'office timing',
+      'office timings',
+      'work start',
+      'work end',
+      'grace period',
+      'office radius',
+      'office location',
+      'office policy',
+      'attendance policy',
+    ])
+  ) {
+    return officePolicyAnswer()
+  }
+
+  if (hasAny(question, ['pending sync', 'offline event', 'offline events', 'not synced', 'waiting to sync'])) {
+    return pendingSyncAnswer()
+  }
+
+  if (hasAny(question, ['inactive employee', 'inactive employees', 'deactivated', 'disabled account'])) {
+    return inactiveEmployeesAnswer()
+  }
+
+  if (hasAny(question, ['duplicate selfie', 'same selfie', 'reused selfie', 'identical selfie'])) {
+    return fraudFlagsAnswer('duplicate_selfie')
+  }
+
+  if (hasAny(question, ['impossible travel', 'too far to be possible'])) {
+    return fraudFlagsAnswer('impossible_travel')
+  }
+
+  if (hasAny(question, ['department headcount', 'headcount by department', 'employees by department', 'department count'])) {
+    return departmentHeadcountAnswer()
+  }
+
+  if (hasAny(question, ['new joiner', 'new joiners', 'new hire', 'new hires', 'joined this month', 'who joined'])) {
+    return joinedThisMonthAnswer(month.anchor, month.label)
+  }
+
+  if (hasAny(question, ['perfect attendance', 'no late', 'zero late', 'no absence'])) {
+    return perfectAttendanceAnswer(month.anchor, month.label)
+  }
+
+  if (hasAny(question, ['most absent', 'top absent', 'absent the most', 'highest absence', 'absent this month'])) {
+    return topAbsentAnswer(month.anchor, month.label)
+  }
+
+  if (hasAny(question, ['overtime', 'extra hours'])) {
+    return overtimeAnswer(month.anchor, month.label)
+  }
+
+  // ---- day-level attendance ----
+  if (
+    hasAny(question, ['on leave today', 'who is on leave', 'leave today', 'on leave right now', 'on leave yesterday'])
+  ) {
+    return onLeaveTodayAnswer(day.date, day.label)
   }
 
   if (hasAny(question, ['pending leave', 'leave request', 'leave requests', 'approve leave', 'leaves waiting', 'leave approval'])) {
@@ -697,10 +1097,14 @@ export async function answerQuestion(rawQuestion: string, userId: string): Promi
     return notCheckedOutAnswer()
   }
 
+  if (hasAny(question, ['checked out', 'check out', 'checkout', 'check outs'])) {
+    return checkedOutOnDateAnswer(day.date, day.label)
+  }
+
   if (
-    hasAny(question, ['absent today', 'who is absent', 'absent employees', 'absent right now', 'not present today', 'not checked in today'])
+    hasAny(question, ['who is absent', 'absent today', 'absent yesterday', 'absent employees', 'absent right now', 'not present today', 'not checked in today', 'not checked in yesterday'])
   ) {
-    return absentTodayAnswer(workDate)
+    return absentOnDateAnswer(day.date, day.label)
   }
 
   if (
@@ -711,14 +1115,14 @@ export async function answerQuestion(rawQuestion: string, userId: string): Promi
     return topLateAnswer(question, employees, month.anchor, month.label)
   }
 
-  if (hasAny(question, ['late today', 'who is late', 'late employees', 'late right now', 'arrived late', 'came late'])) {
-    return lateTodayAnswer(workDate)
+  if (hasAny(question, ['late today', 'late yesterday', 'who is late', 'late employees', 'late right now', 'arrived late', 'came late', 'who was late'])) {
+    return lateOnDateAnswer(day.date, day.label)
   }
 
   if (
-    hasAny(question, ['present today', 'how many present', 'checked in today', 'who checked in', 'attendance today', 'today summary', 'summary today', 'today overview', 'how many people are in'])
+    hasAny(question, ['present today', 'how many present', 'checked in today', 'who checked in', 'attendance today', 'today summary', 'summary today', 'today overview', 'yesterday summary', 'yesterday overview', 'attendance yesterday', 'who was present', 'day summary', 'at a glance'])
   ) {
-    return presentTodayAnswer(workDate)
+    return daySummaryAnswer(day.date, day.label)
   }
 
   if (
@@ -739,6 +1143,20 @@ export async function answerQuestion(rawQuestion: string, userId: string): Promi
   if (payrollWords) {
     if (match.kind === 'many') return whichEmployeeAnswer(question, match.candidates)
     return payrollAnswer(employee, month.anchor, month.label)
+  }
+
+  const leaveHistoryWords = hasAny(question, [
+    'leave history',
+    'leaves taken',
+    'leave record',
+    'leave records',
+    'past leaves',
+    'leave requests of',
+  ])
+  if (leaveHistoryWords) {
+    if (match.kind === 'many') return whichEmployeeAnswer(question, match.candidates)
+    if (match.kind === 'one') return leaveHistoryAnswer(match.employee, month.anchor.slice(0, 4))
+    return whichEmployeeAnswer(question, [])
   }
 
   const leaveWords = hasAny(question, [

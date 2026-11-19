@@ -54,7 +54,7 @@ export default async function SuggestionsPage({ searchParams }: PageProps<"/care
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6">
-      <header className="card bg-gradient-to-br from-indigo-600 to-teal-600 text-white">
+      <header className="card bg-slate-900 text-white">
         <p className="text-xs font-semibold tracking-wider text-white/70 uppercase">Profile-based guidance</p>
         <h1 className="mt-1 text-2xl font-black">Tell us about yourself, get ranked matches</h1>
         <p className="mt-2 max-w-3xl text-sm text-white/85">

@@ -31,7 +31,7 @@ export default function Avatar({ src, name, size = 48, className = "" }: AvatarP
   return (
     <span
       style={{ width: size, height: size, fontSize: size * 0.38 }}
-      className={`flex shrink-0 items-center justify-center rounded-full bg-indigo-100 font-bold text-indigo-700 ring-2 ring-white ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-950 ring-2 ring-white ${className}`}
     >
       {initials}
     </span>

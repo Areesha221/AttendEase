@@ -43,14 +43,44 @@ export async function requireSession(): Promise<SessionPayload> {
   return session
 }
 
-/** Boss-only area. Employees get bounced to their own dashboard. */
-export async function requireBoss(): Promise<SessionPayload> {
+/** Staff area (admin, HR or manager). Employees go back to their own dashboard. */
+export async function requireStaff(): Promise<SessionPayload> {
   const session = await requireSession()
-  if (session.role !== 'boss') redirect('/app')
+  if (session.role === 'employee') redirect('/app')
   return session
 }
 
-/** Employee-only area. Bosses get bounced to the boss dashboard. */
+/** Admin only — staff accounts, destructive actions and owner settings. */
+export async function requireAdmin(): Promise<SessionPayload> {
+  const session = await requireSession()
+  if (session.role !== 'admin') redirect(session.role === 'employee' ? '/app' : '/boss')
+  return session
+}
+
+/** Admin or HR — employee records, attendance review, leave and the gate. */
+export async function requireHr(): Promise<SessionPayload> {
+  const session = await requireSession()
+  if (session.role !== 'admin' && session.role !== 'hr') {
+    redirect(session.role === 'employee' ? '/app' : '/boss')
+  }
+  return session
+}
+
+/** Admin or manager — company-wide reports and payroll. */
+export async function requireReports(): Promise<SessionPayload> {
+  const session = await requireSession()
+  if (session.role !== 'admin' && session.role !== 'manager') {
+    redirect(session.role === 'employee' ? '/app' : '/boss')
+  }
+  return session
+}
+
+/** Backwards-compatible alias: every staff role may open the boss area. */
+export async function requireBoss(): Promise<SessionPayload> {
+  return requireStaff()
+}
+
+/** Employee-only area. Staff accounts are bounced to the boss area. */
 export async function requireEmployee(): Promise<SessionPayload> {
   const session = await requireSession()
   if (session.role !== 'employee') redirect('/boss')
@@ -58,5 +88,5 @@ export async function requireEmployee(): Promise<SessionPayload> {
 }
 
 export async function homePathFor(role: Role): Promise<string> {
-  return role === 'boss' ? '/boss' : '/app'
+  return role === 'employee' ? '/app' : '/boss'
 }

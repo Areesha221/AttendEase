@@ -378,7 +378,7 @@ export default function SelfieCapture({
               )}
               {gateCodeComplete
                 ? "Code entered — the server checks it against its own clock."
-                : "Required. Without a valid code the event is still saved, but it is flagged for your boss to review."}
+                : "Required. Without a valid code the event is still saved, but it is flagged for review."}
             </p>
           </div>
         )}
@@ -389,14 +389,14 @@ export default function SelfieCapture({
           </p>
           <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
             <li className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" /> Server time (Asia/Karachi) is recorded, not your
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-900" /> Server time (Asia/Karachi) is recorded, not your
               device clock.
             </li>
             <li className="flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" /> {employeeName} • {employeeCode}
+              <ShieldCheck className="h-3.5 w-3.5 text-blue-900" /> {employeeName} • {employeeCode}
             </li>
             <li className="flex items-center gap-1.5">
-              <WifiOff className="h-3.5 w-3.5 text-indigo-600" /> If you are offline, it is saved on this device and
+              <WifiOff className="h-3.5 w-3.5 text-blue-900" /> If you are offline, it is saved on this device and
               synced automatically.
             </li>
           </ul>

@@ -55,7 +55,7 @@ export default function GateScreen({ code, secondsLeft, totalSeconds, qrSvg }: P
 
       <div className="mx-auto mt-4 max-w-xs">
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-indigo-500 transition-[width] duration-1000" style={{ width: `${progress}%` }} />
+          <div className="h-full rounded-full bg-blue-700 transition-[width] duration-1000" style={{ width: `${progress}%` }} />
         </div>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-slate-500">
           <TimerReset className="h-3.5 w-3.5" /> New code in {remaining}s

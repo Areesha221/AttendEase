@@ -180,7 +180,7 @@ export default async function EmployeeHomePage() {
             Avg check-in {formatTime12(summary.averageCheckIn)} • avg check-out{" "}
             {formatTime12(summary.averageCheckOut)} • overtime {formatHours(summary.overtimeHours)}
           </p>
-          <Link href="/app/attendance" className="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+          <Link href="/app/attendance" className="mt-3 inline-block text-xs font-semibold text-blue-900 hover:text-blue-950">
             View attendance history →
           </Link>
         </div>
@@ -196,7 +196,7 @@ export default async function EmployeeHomePage() {
             <p>Waiting approval: {balance.annualPending} days</p>
             <p>Sick used: {balance.sickUsed} • Casual used: {balance.casualUsed}</p>
           </div>
-          <Link href="/app/leave" className="mt-3 inline-block text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+          <Link href="/app/leave" className="mt-3 inline-block text-xs font-semibold text-blue-900 hover:text-blue-950">
             Request leave →
           </Link>
         </div>
@@ -285,9 +285,9 @@ export default async function EmployeeHomePage() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-semibold text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50/40"
+                className="flex items-center gap-2 rounded-xl border border-slate-200 px-3.5 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/40"
               >
-                <Icon className="h-4 w-4 text-indigo-600" />
+                <Icon className="h-4 w-4 text-blue-900" />
                 {link.label}
               </Link>
             );

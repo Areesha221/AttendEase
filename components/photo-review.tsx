@@ -40,7 +40,7 @@ export default function PhotoReview({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="shrink-0 overflow-hidden rounded-lg ring-2 ring-white transition hover:ring-indigo-300"
+        className="shrink-0 overflow-hidden rounded-lg ring-2 ring-white transition hover:ring-blue-300"
         style={{ width: size, height: size }}
         title="Review selfie"
       >

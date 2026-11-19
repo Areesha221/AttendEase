@@ -5,7 +5,7 @@ import { AlertTriangle, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
 import PasswordInput from "@/components/password-input";
 import { loginAction, type LoginState } from "@/lib/auth";
 
-type Role = "employee" | "boss";
+type Role = "employee" | "staff";
 
 export default function LoginForm({ initialRole }: { initialRole: Role }) {
   const [role, setRole] = useState<Role>(initialRole);
@@ -16,16 +16,16 @@ export default function LoginForm({ initialRole }: { initialRole: Role }) {
   return (
     <div className="w-full max-w-md">
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
-        {(["employee", "boss"] as Role[]).map((option) => (
+        {(["employee", "staff"] as Role[]).map((option) => (
           <button
             key={option}
             type="button"
             onClick={() => setRole(option)}
             className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
-              role === option ? "bg-white text-indigo-700 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              role === option ? "bg-white text-blue-950 shadow-sm" : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {option === "employee" ? "Employee" : "Boss / Admin"}
+            {option === "employee" ? "Employee" : "Staff / Admin"}
           </button>
         ))}
       </div>

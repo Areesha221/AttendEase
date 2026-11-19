@@ -2,16 +2,27 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Mail, ShieldCheck, UserCog } from "lucide-react";
 import ChangePasswordForm from "@/components/change-password-form";
 import { getSettings, getUserById } from "@/lib/queries";
-import { requireBoss } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
+import { ROLE_LABELS, canManageEmployees, canManageStaff, canSeeReports, canUseGate } from "@/lib/roles";
+
+const ROLE_ACCESS: Record<string, string> = {
+  admin:
+    "This account can manage employees, approve leave, review attendance, open the entrance gate, export reports and create HR or manager accounts.",
+  hr:
+    "This account can add and edit employees, approve leave, review attendance and operate the entrance gate. Reports and staff accounts stay with the administrator.",
+  manager:
+    "This account sees the company-wide dashboard, attendance, leave approvals and reports. Employee records and staff accounts are read-only or hidden.",
+};
 
 export default async function BossProfilePage() {
-  const session = await requireBoss();
+  const session = await requireStaff();
   const user = await getUserById(session.userId);
   const settings = await getSettings();
+  const roleLabel = ROLE_LABELS[session.role];
 
   const rows = [
     { label: "Email", value: user?.email ?? "—", mono: true },
-    { label: "Role", value: "Boss / Administrator" },
+    { label: "Role", value: roleLabel },
     { label: "Department", value: session.department || "Management" },
     { label: "Office", value: settings.office_name },
     {
@@ -20,6 +31,13 @@ export default async function BossProfilePage() {
     },
     { label: "Geo-fence radius", value: `${settings.radius_m} m` },
   ];
+
+  const access = [
+    canManageEmployees(session.role) ? "Employees" : null,
+    canUseGate(session.role) ? "Gate" : null,
+    canSeeReports(session.role) ? "Reports" : null,
+    canManageStaff(session.role) ? "Staff accounts" : null,
+  ].filter(Boolean) as string[];
 
   return (
     <main className="mx-auto w-full max-w-5xl px-5 py-6">
@@ -41,7 +59,7 @@ export default async function BossProfilePage() {
         </div>
         <div className="min-w-48 flex-1">
           <h1 className="text-xl font-black text-slate-900">{session.name}</h1>
-          <p className="text-sm text-slate-600">Boss / Administrator • {session.department}</p>
+          <p className="text-sm text-slate-600">{roleLabel} • {session.department}</p>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500">
             <Mail className="h-3.5 w-3.5" /> {user?.email ?? "—"}
           </p>
@@ -68,11 +86,11 @@ export default async function BossProfilePage() {
         <div className="space-y-4">
           <div className="card">
             <p className="section-title flex items-center gap-2">
-              <Building2 className="h-3.5 w-3.5" /> Administrator access
+              <Building2 className="h-3.5 w-3.5" /> {roleLabel} access
             </p>
-            <p className="mt-3 text-sm text-slate-600">
-              This account can manage employees, approve leave, review attendance and change policy
-              settings. You can change your own password below at any time — no one else can see it.
+            <p className="mt-3 text-sm text-slate-600">{ROLE_ACCESS[session.role]}</p>
+            <p className="mt-2 text-xs text-slate-500">
+              Modules available to you: {access.length > 0 ? access.join(", ") : "self-service"}.
             </p>
           </div>
 

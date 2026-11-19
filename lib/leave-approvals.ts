@@ -8,7 +8,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { get, newId, run } from '@/lib/db'
-import { requireBoss } from '@/lib/session'
+import { requireStaff } from '@/lib/session'
 import { toServerTime } from '@/lib/time'
 
 type LeaveRow = {
@@ -22,7 +22,7 @@ type LeaveRow = {
 }
 
 export async function decideLeaveAction(formData: FormData): Promise<void> {
-  const session = await requireBoss()
+  const session = await requireStaff()
 
   const leaveId = String(formData.get('leave_id') ?? '')
   const decision = String(formData.get('decision') ?? '')

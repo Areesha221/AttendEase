@@ -2,13 +2,13 @@ import Link from "next/link";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import EmployeeForm from "@/components/employee-form";
 import { listDepartments, nextEmployeeCode } from "@/lib/queries";
-import { requireBoss } from "@/lib/session";
+import { requireHr } from "@/lib/session";
 import { toWorkDate } from "@/lib/time";
 
 export const metadata = { title: "Add employee — AttendEase" };
 
 export default async function NewEmployeePage() {
-  await requireBoss();
+  await requireHr();
 
   const departments = await listDepartments();
   const suggestedCode = await nextEmployeeCode();
@@ -23,7 +23,7 @@ export default async function NewEmployeePage() {
       </Link>
 
       <header className="mb-4 flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-900 text-white">
           <UserPlus className="h-5 w-5" />
         </span>
         <div>

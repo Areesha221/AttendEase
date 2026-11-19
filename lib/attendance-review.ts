@@ -12,7 +12,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { get, newId, run } from '@/lib/db'
-import { requireBoss } from '@/lib/session'
+import { requireStaff } from '@/lib/session'
 import { toServerTime } from '@/lib/time'
 
 type ReviewableEvent = {
@@ -31,7 +31,7 @@ type ReviewableEvent = {
 }
 
 export async function decideAttendanceReviewAction(formData: FormData): Promise<void> {
-  const session = await requireBoss()
+  const session = await requireStaff()
 
   const eventId = String(formData.get('event_id') ?? '')
   const decision = String(formData.get('decision') ?? '')

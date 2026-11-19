@@ -6,7 +6,7 @@ import { LEAVE_STATUS_META, LEAVE_TYPE_META, type LeaveType } from "@/lib/leave-
 import { TONE_CLASSES } from "@/lib/rules";
 import { listLeaves } from "@/lib/queries";
 import { formatDateHuman, formatStamp12 } from "@/lib/time";
-import { requireBoss } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
 
 const TABS = [
   { key: "pending", label: "Awaiting decision" },
@@ -16,7 +16,7 @@ const TABS = [
 ] as const;
 
 export default async function BossLeavePage(props: PageProps<"/boss/leave">) {
-  await requireBoss();
+  await requireStaff();
 
   const params = await props.searchParams;
   const status = typeof params.status === "string" ? params.status : "pending";
@@ -50,12 +50,12 @@ export default async function BossLeavePage(props: PageProps<"/boss/leave">) {
             href={`/boss/leave?status=${tab.key}`}
             className={`badge ${
               activeTab === tab.key
-                ? "bg-indigo-600 text-white ring-indigo-600"
+                ? "bg-blue-900 text-white ring-blue-900"
                 : "bg-slate-100 text-slate-600 ring-slate-200"
             }`}
           >
             {tab.label}
-            <span className={activeTab === tab.key ? "text-indigo-100" : "text-slate-400"}>
+            <span className={activeTab === tab.key ? "text-blue-100" : "text-slate-400"}>
               {counts[tab.key] ?? 0}
             </span>
           </Link>

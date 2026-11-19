@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   email         TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL CHECK (role IN ('employee', 'boss')),
+  access_role   TEXT,                   -- admin | hr | manager (NULL = derived from role)
+  display_name  TEXT,
   is_active     INTEGER NOT NULL DEFAULT 1,
   created_at    TEXT NOT NULL
 );

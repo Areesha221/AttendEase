@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { requireBoss } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
+import { ROLE_LABELS } from "@/lib/roles";
 import BossNav from "@/components/boss-nav";
 import SignOutForm from "@/components/sign-out-form";
 
 export default async function BossLayout({ children }: LayoutProps<"/boss">) {
-  const session = await requireBoss();
+  const session = await requireStaff();
 
   return (
     <>
@@ -17,15 +18,15 @@ export default async function BossLayout({ children }: LayoutProps<"/boss">) {
             AE
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-slate-900">AttendEase Admin</p>
+            <p className="truncate text-sm font-bold text-slate-900">AttendEase Staff Desk</p>
             <p className="truncate text-[11px] text-slate-500">
-              {session.name} • Boss / Administrator
+              {session.name} · {ROLE_LABELS[session.role]}
             </p>
           </div>
           <SignOutForm compact />
         </div>
         <div className="mx-auto w-full max-w-6xl px-4 pb-2">
-          <BossNav />
+          <BossNav role={session.role} />
         </div>
       </header>
 

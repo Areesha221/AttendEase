@@ -6,7 +6,7 @@ import { GPS_ACCURACY_LIMIT_M, TONE_CLASSES } from "@/lib/rules";
 import { fraudFlagLabels } from "@/lib/fraud";
 import { listDayAttendance, listReviewQueue } from "@/lib/queries";
 import { formatDateHuman, formatStamp12, toWorkDate } from "@/lib/time";
-import { requireBoss } from "@/lib/session";
+import { requireStaff } from "@/lib/session";
 
 const FILTERS = [
   { key: "all", label: "All" },
@@ -17,7 +17,7 @@ const FILTERS = [
 ] as const;
 
 export default async function AttendanceMonitorPage(props: PageProps<"/boss/attendance">) {
-  await requireBoss();
+  await requireStaff();
 
   const params = await props.searchParams;
   const today = toWorkDate();
@@ -43,7 +43,7 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
   const summary = [
     { label: "Events", value: events.length, tone: "text-slate-900" },
     { label: "Check-ins", value: checkIns, tone: "text-emerald-600" },
-    { label: "Check-outs", value: checkOuts, tone: "text-indigo-600" },
+    { label: "Check-outs", value: checkOuts, tone: "text-blue-900" },
     { label: "Flagged location", value: flagged, tone: "text-rose-600" },
     { label: "Awaiting review", value: awaitingReview, tone: "text-amber-600" },
     { label: "Pending sync", value: pendingSync, tone: "text-amber-600" },
@@ -88,7 +88,7 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
           <Link
             key={item.key}
             href={`/boss/attendance?date=${date}&filter=${item.key}`}
-            className={`badge ${filter === item.key ? "bg-indigo-600 text-white ring-indigo-600" : "bg-slate-100 text-slate-600 ring-slate-200"}`}
+            className={`badge ${filter === item.key ? "bg-blue-900 text-white ring-blue-900" : "bg-slate-100 text-slate-600 ring-slate-200"}`}
           >
             {item.label}
           </Link>
@@ -100,7 +100,7 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                 ? `/boss/attendance?date=${date}&filter=review`
                 : `/boss/attendance?filter=review&scope=all`
             }
-            className="badge bg-indigo-50 text-indigo-700 ring-indigo-200"
+            className="badge bg-blue-50 text-blue-950 ring-blue-200"
           >
             {allDates ? `Show only ${formatDateHuman(date)}` : "Show all dates"}
           </Link>
@@ -189,7 +189,7 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                     href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 hover:underline"
+                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-blue-900 hover:underline"
                   >
                     <MapPin className="h-3 w-3" />
                     {event.latitude.toFixed(5)}, {event.longitude.toFixed(5)}
@@ -200,12 +200,12 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                   <div className="mt-2 border-t border-slate-100 pt-2">
                     <p className="text-[11px] text-slate-500">
                       {event.review_status === "approved" ? "Approved" : "Rejected"} by{" "}
-                      {event.reviewed_by ?? "boss"}
+                      {event.reviewed_by ?? "staff"}
                       {event.reviewed_at ? ` • ${formatStamp12(event.reviewed_at)}` : ""}
                       {event.review_note ? ` — ${event.review_note}` : ""}
                     </p>
                     <details className="mt-1">
-                      <summary className="cursor-pointer text-[11px] font-semibold text-indigo-600">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-blue-900">
                         Change decision
                       </summary>
                       <AttendanceReview eventId={event.id} />

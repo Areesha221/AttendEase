@@ -10,11 +10,13 @@ type Props = {
   employeeId: string;
   employeeName: string;
   status: EmployeeStatus;
-  /** False when the signed-in boss is looking at their own record. */
+  /** False when the signed-in staff member is looking at their own record. */
   canModify: boolean;
+  /** Only an administrator may permanently delete an employee. */
+  canDelete: boolean;
 };
 
-export default function EmployeeAdminActions({ employeeId, employeeName, status, canModify }: Props) {
+export default function EmployeeAdminActions({ employeeId, employeeName, status, canModify, canDelete }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
@@ -43,17 +45,19 @@ export default function EmployeeAdminActions({ employeeId, employeeName, status,
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setShowDelete((value) => !value)}
-            className="btn btn-sm btn-danger"
-          >
-            <Trash2 className="h-3.5 w-3.5" /> Delete permanently
-          </button>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setShowDelete((value) => !value)}
+              className="btn btn-sm btn-danger"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete permanently
+            </button>
+          )}
         </div>
       )}
 
-      {canModify && showDelete && (
+      {canModify && canDelete && showDelete && (
         <form
           action={deleteEmployeeAction}
           className="mt-3 space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5"

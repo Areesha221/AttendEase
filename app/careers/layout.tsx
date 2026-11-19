@@ -5,7 +5,7 @@ import SignOutForm from "@/components/sign-out-form";
 
 export default async function CareersLayout({ children }: LayoutProps<"/careers">) {
   const session = await requireSession();
-  const home = session.role === "boss" ? "/boss" : "/app";
+  const home = session.role === "employee" ? "/app" : "/boss";
 
   return (
     <>

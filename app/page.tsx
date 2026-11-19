@@ -28,7 +28,7 @@ const FEATURES = [
   },
   {
     icon: Users,
-    title: "Boss dashboard",
+    title: "Staff dashboard",
     body: "Live attendance, employee directory, photo review, leave approvals, reports and policy settings.",
   },
   {
@@ -50,7 +50,7 @@ export default async function WelcomePage() {
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-10 sm:py-16">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-600 text-lg font-black text-white shadow-md">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-900 text-lg font-black text-white shadow-md">
             AE
           </span>
           <div>
@@ -65,12 +65,12 @@ export default async function WelcomePage() {
 
       <section className="mt-10 grid gap-10 lg:mt-16 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
-          <span className="badge bg-indigo-50 text-indigo-700 ring-indigo-200">
+          <span className="badge bg-blue-50 text-blue-950 ring-blue-200">
             Employee attendance • Leave • Payroll • Study abroad
           </span>
           <h1 className="mt-4 text-3xl leading-tight font-black text-slate-900 sm:text-5xl">
             Attendance you can trust,
-            <span className="block text-indigo-600">management you can see.</span>
+            <span className="block text-blue-900">management you can see.</span>
           </h1>
           <p className="mt-4 max-w-xl text-base text-slate-600">
             Employees register, check in and check out with a live selfie and verified location.
@@ -81,7 +81,7 @@ export default async function WelcomePage() {
           <div className="mt-7 flex flex-wrap gap-3">
             {session ? (
               <Link
-                href={session.role === "boss" ? "/boss" : "/app"}
+                href={session.role === "employee" ? "/app" : "/boss"}
                 className="btn btn-primary"
               >
                 Continue as {session.name} <ArrowRight className="h-4 w-4" />
@@ -91,8 +91,8 @@ export default async function WelcomePage() {
                 <Link href="/login?role=employee" className="btn btn-primary">
                   Employee login <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="/login?role=boss" className="btn btn-ghost">
-                  Boss / Administrator login
+                <Link href="/login?role=staff" className="btn btn-ghost">
+                  Staff login (Admin / HR / Manager)
                 </Link>
               </>
             )}
@@ -102,7 +102,7 @@ export default async function WelcomePage() {
         <div className="grid gap-3 sm:grid-cols-2">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="card">
-              <feature.icon className="h-5 w-5 text-indigo-600" />
+              <feature.icon className="h-5 w-5 text-blue-900" />
               <p className="mt-3 text-sm font-bold text-slate-900">{feature.title}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">{feature.body}</p>
             </div>

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "AttendEase — Attendance & Workforce Management",
     short_name: "AttendEase",
     description:
-      "Employee attendance with selfie + GPS verification, leave management, payroll estimates, boss dashboard and study-abroad guidance.",
+      "Employee attendance with selfie + GPS verification, leave management, payroll estimates, staff dashboard and study-abroad guidance.",
     start_url: "/",
     scope: "/",
     display: "standalone",

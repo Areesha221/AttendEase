@@ -13,7 +13,7 @@ export default async function EmployeeLayout({ children }: LayoutProps<"/app">) 
         <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-5 pt-3">
           <Link
             href="/app"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-sm font-black text-white"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-900 text-sm font-black text-white"
           >
             AE
           </Link>

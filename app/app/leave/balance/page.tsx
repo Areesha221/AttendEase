@@ -64,7 +64,7 @@ export default async function LeaveBalancePage() {
           const Icon = item.icon;
           return (
             <div key={item.label} className="card-tight flex items-center gap-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-900">
                 <Icon className="h-4 w-4" />
               </span>
               <div>

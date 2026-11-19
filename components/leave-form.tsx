@@ -125,7 +125,7 @@ export default function LeaveForm({ weekendDays, holidays, today }: Props) {
           onChange={(event) => setEmergency(event.target.checked)}
           className="h-4 w-4 rounded border-slate-300"
         />
-        Mark as emergency (notifies the boss immediately)
+        Mark as emergency (notifies approvers immediately)
       </label>
 
       <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3.5 py-3">

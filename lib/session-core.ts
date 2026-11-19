@@ -12,7 +12,19 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7 // 7 days
 // Demo fallback secret. In real deployment set SESSION_SECRET in .env.local
 const SECRET = process.env.SESSION_SECRET ?? 'attend-ease-demo-secret-change-me'
 
-export type Role = 'employee' | 'boss'
+export type Role = 'admin' | 'hr' | 'manager' | 'employee'
+
+export const STAFF_ROLES: Role[] = ['admin', 'hr', 'manager']
+
+export function isStaffRole(role: Role): boolean {
+  return role !== 'employee'
+}
+
+/** Turn the stored columns into one effective role (old cookies use "boss"). */
+export function effectiveRole(storedRole: string | null | undefined, accessRole: string | null | undefined): Role {
+  if (accessRole === 'admin' || accessRole === 'hr' || accessRole === 'manager') return accessRole
+  return storedRole === 'boss' ? 'admin' : 'employee'
+}
 
 export type SessionPayload = {
   userId: string
@@ -51,10 +63,29 @@ export function verifyToken(token: string | undefined | null): SessionPayload | 
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null
 
   try {
-    const payload = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as SessionPayload
-    if (!payload?.userId || !payload?.exp) return null
-    if (payload.exp * 1000 < Date.now()) return null
-    return payload
+    const parsed = JSON.parse(Buffer.from(body, 'base64url').toString('utf8')) as {
+      userId?: string
+      employeeId?: string
+      role?: string
+      name?: string
+      department?: string
+      exp?: number
+    }
+    if (!parsed?.userId || !parsed?.exp) return null
+    if (parsed.exp * 1000 < Date.now()) return null
+
+    // Cookies issued before the role split used "boss"; treat them as admin.
+    const role = parsed.role === 'boss' ? 'admin' : parsed.role
+    if (role !== 'admin' && role !== 'hr' && role !== 'manager' && role !== 'employee') return null
+
+    return {
+      userId: parsed.userId,
+      employeeId: parsed.employeeId ?? '',
+      role,
+      name: parsed.name ?? '',
+      department: parsed.department ?? '',
+      exp: parsed.exp,
+    }
   } catch {
     return null
   }

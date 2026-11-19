@@ -23,7 +23,7 @@ import {
   toWorkDate,
   weekdayName,
 } from "@/lib/time";
-import { requireBoss } from "@/lib/session";
+import { requireHr } from "@/lib/session";
 import { notFound } from "next/navigation";
 
 function shiftMonth(month: string, delta: number): string {
@@ -32,7 +32,7 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 export default async function EmployeeDetailPage(props: PageProps<"/boss/employees/[id]">) {
-  const session = await requireBoss();
+  const session = await requireHr();
 
   const { id } = await props.params;
   const employee = await getEmployeeById(id);
@@ -102,6 +102,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
         employeeName={employee.full_name}
         status={employee.status}
         canModify={employee.user_id !== session.userId}
+        canDelete={session.role === "admin"}
       />
 
       <section className="card mt-4">
