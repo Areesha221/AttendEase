@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Check, KeyRound, Loader2, Power, X } from "lucide-react";
+import { Check, KeyRound, Loader2, Power, Trash2, X } from "lucide-react";
 import {
+  deleteStaffAction,
   resetStaffPasswordAction,
   setStaffStatusAction,
   type StaffFormState,
@@ -13,9 +14,10 @@ type Props = {
   email: string;
   isActive: boolean;
   isSelf: boolean;
+  canDelete: boolean;
 };
 
-export default function StaffActions({ userId, email, isActive, isSelf }: Props) {
+export default function StaffActions({ userId, email, isActive, isSelf, canDelete }: Props) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<StaffFormState, FormData>(
     resetStaffPasswordAction,
@@ -47,6 +49,25 @@ export default function StaffActions({ userId, email, isActive, isSelf }: Props)
           <KeyRound className="h-3.5 w-3.5" />
           Reset password
         </button>
+
+        {canDelete && (
+          <form
+            action={deleteStaffAction}
+            onSubmit={(event) => {
+              const ok = window.confirm(
+                `Permanently delete ${email}? The login and all attendance history for this account are removed.`,
+              );
+              if (!ok) event.preventDefault();
+            }}
+          >
+            <input type="hidden" name="user_id" value={userId} />
+            <input type="hidden" name="confirm" value="DELETE" />
+            <button type="submit" className="btn btn-sm btn-danger" title="Delete this account permanently">
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          </form>
+        )}
       </div>
 
       {open && (

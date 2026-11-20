@@ -28,6 +28,8 @@ items exist and which server actions succeed; every page and action re-checks th
 | Company reports, payroll and CSV export | ✅ | — | ✅ |
 | Create HR / manager staff accounts | ✅ | — | — |
 | Permanently delete an employee | ✅ | — | — |
+| Delete an HR / manager staff account | ✅ | — | — |
+| Own check-in / check-out (**My attendance**) | ✅ | ✅ | ✅ |
 
 - **Admin** sees and can do everything, including **Staff accounts** (`/boss/team`).
 - **HR** handles people: add/edit employees, attendance review, leave, gate and Q&A. Reports and staff
@@ -37,12 +39,16 @@ items exist and which server actions succeed; every page and action re-checks th
 - **Employee** only ever sees `/app` (self-service check-in/out, history, leave, profile).
 
 Every staff role also gets **My attendance** (`/boss/me`): the same selfie + GPS check-in/check-out as
-employees, plus a personal attendance history. Staff attendance profiles are linked to their staff
-account, so they never appear in the employee directory, payroll or company-wide counts. A staff
-member can only ever capture attendance for their own account.
+employees, plus a personal attendance history. HR and manager accounts are company employees, so their
+profiles appear in the employee directory, payroll, attendance monitor and reports with a **Staff**
+badge; only the owner/admin record is hidden from staff views. A staff member can only ever capture
+attendance for their own account. Attendance is optional for the owner/admin account and is never
+counted in company attendance, absence lists, payroll or headcount.
 
-Staff accounts are created by the admin from **Staff accounts → Add a staff account**. Deactivating an
-account blocks sign-in immediately. Every create, activate, deactivate and password reset is written to
+Staff accounts are created by the admin from **Staff accounts → Add a staff account**, with an optional
+monthly salary. Deactivating an account blocks sign-in immediately; deleting an HR/manager account
+permanently removes its login, employee profile and attendance history. The admin can never delete their
+own or the owner account. Every create, activate, deactivate, delete and password reset is written to
 the audit log.
 
 ### Employee

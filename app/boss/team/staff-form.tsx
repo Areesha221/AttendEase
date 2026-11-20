@@ -77,6 +77,29 @@ export default function StaffForm() {
           />
           {fieldError("password") && <p className="mt-1 text-xs text-rose-700">{fieldError("password")}</p>}
         </div>
+
+        <div>
+          <label className="label" htmlFor="staff_salary">
+            Monthly salary <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <input
+            id="staff_salary"
+            name="monthly_salary"
+            type="number"
+            min="0"
+            step="1"
+            className="input"
+            placeholder="e.g. 120000"
+            inputMode="numeric"
+          />
+          {fieldError("monthly_salary") ? (
+            <p className="mt-1 text-xs text-rose-700">{fieldError("monthly_salary")}</p>
+          ) : (
+            <p className="mt-1 text-[11px] text-slate-400">
+              HR and managers are company employees. You can edit this later from Employees.
+            </p>
+          )}
+        </div>
       </div>
 
       {state?.error && (

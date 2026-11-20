@@ -24,7 +24,7 @@ import {
   weekdayName,
 } from "@/lib/time";
 import { requireHr } from "@/lib/session";
-import { isStaffLinkedEmployee } from "@/lib/employees";
+import { getEmployeeAccountRole } from "@/lib/employees";
 import { notFound } from "next/navigation";
 
 function shiftMonth(month: string, delta: number): string {
@@ -38,7 +38,14 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
   const { id } = await props.params;
   const employee = await getEmployeeById(id);
   if (!employee) notFound();
-  if (session.role !== "admin" && (await isStaffLinkedEmployee(employee.id))) notFound();
+  // The owner account is never an employee record for HR: only the admin can
+  // open it. HR may view HR/manager profiles, but salary and account controls
+  // stay with the administrator.
+  const accountRole = await getEmployeeAccountRole(employee.id);
+  if (accountRole === "admin" && session.role !== "admin") notFound();
+  const staffLinked = accountRole !== null;
+  const canManage = session.role === "admin" || !staffLinked;
+  const canSeeSalary = session.role === "admin" || !staffLinked;
 
   const params = await props.searchParams;
   const requested = typeof params.month === "string" ? params.month : "";
@@ -60,7 +67,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
     { label: "Department", value: employee.department ?? "—" },
     { label: "Job title", value: employee.job_title ?? "—" },
     { label: "Joining date", value: formatDateHuman(employee.joining_date) },
-    { label: "Monthly salary", value: formatPkr(employee.monthly_salary) },
+    ...(canSeeSalary ? [{ label: "Monthly salary", value: formatPkr(employee.monthly_salary) }] : []),
     { label: "Phone", value: employee.phone ?? "—" },
     { label: "Account", value: employee.status === "active" ? "Active" : "Inactive" },
   ];
@@ -93,29 +100,46 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
           >
             {employee.status === "active" ? "Active" : "Inactive"}
           </span>
-          <Link href={`/boss/employees/${employee.id}/edit`} className="btn btn-sm btn-ghost">
-            Edit
-          </Link>
+          {accountRole && (
+            <span className="badge bg-blue-50 text-blue-900 ring-blue-200">
+              {accountRole === "admin" ? "Owner account" : accountRole === "hr" ? "HR staff" : "Manager staff"}
+            </span>
+          )}
+          {canManage && (
+            <Link href={`/boss/employees/${employee.id}/edit`} className="btn btn-sm btn-ghost">
+              Edit
+            </Link>
+          )}
         </div>
       </header>
 
-      <EmployeeAdminActions
-        employeeId={employee.id}
-        employeeName={employee.full_name}
-        status={employee.status}
-        canModify={employee.user_id !== session.userId}
-        canDelete={session.role === "admin"}
-      />
+      {canManage && (
+        <EmployeeAdminActions
+          employeeId={employee.id}
+          employeeName={employee.full_name}
+          status={employee.status}
+          canModify={employee.user_id !== session.userId}
+          canDelete={session.role === "admin"}
+        />
+      )}
 
-      <section className="card mt-4">
-        <p className="section-title flex items-center gap-2">
-          <KeyRound className="h-3.5 w-3.5" /> Reset login password
+      {canManage && (
+        <section className="card mt-4">
+          <p className="section-title flex items-center gap-2">
+            <KeyRound className="h-3.5 w-3.5" /> Reset login password
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Set a new password for {employee.full_name}. They can change it themselves later from My Profile.
+          </p>
+          <ResetPasswordForm employeeId={employee.id} employeeName={employee.full_name} />
+        </section>
+      )}
+
+      {!canManage && staffLinked && (
+        <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+          This is a staff account. Only the administrator can change its details, salary or password.
         </p>
-        <p className="mt-1 text-xs text-slate-500">
-          Set a new password for {employee.full_name}. They can change it themselves later from My Profile.
-        </p>
-        <ResetPasswordForm employeeId={employee.id} employeeName={employee.full_name} />
-      </section>
+      )}
 
       <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {details.map((detail) => (
@@ -212,6 +236,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
         </div>
 
         <div className="space-y-4">
+          {canSeeSalary && (
           <div className="card">
             <p className="section-title flex items-center gap-2">
               <Wallet className="h-3.5 w-3.5" /> Salary estimate
@@ -254,6 +279,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
               Estimate only — approved, entitled leave is never penalised as absence.
             </p>
           </div>
+          )}
 
           <div className="card">
             <p className="section-title">Leave balance {toWorkDate().slice(0, 4)}</p>

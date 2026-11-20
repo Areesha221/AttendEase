@@ -125,6 +125,7 @@ export default async function TeamPage(props: {
                         email={account.email}
                         isActive={isActive}
                         isSelf={isSelf}
+                        canDelete={role !== "admin" && !isSelf}
                       />
                     )}
                   </li>
@@ -138,8 +139,9 @@ export default async function TeamPage(props: {
       </div>
 
       <p className="mt-5 text-[11px] text-slate-500">
-        Deactivated accounts cannot sign in. Every create, activate, deactivate and password reset is written
-        to the audit log.
+        Deactivated accounts cannot sign in immediately. Deleting an account removes its login and attendance
+        history permanently. Every create, activate, deactivate, delete and password reset is written to the
+        audit log.
       </p>
     </main>
   );

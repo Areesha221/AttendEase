@@ -163,11 +163,11 @@ export async function getUserById(id: string): Promise<{ id: string; email: stri
 }
 
 export async function listEmployees(options: { search?: string; department?: string; includeInactive?: boolean } = {}): Promise<Employee[]> {
-  // Staff accounts (the admin/owner, HR and managers) are not employees: they
-  // must never appear in the employee directory, payroll, absence counts or
-  // reports. Only real employee accounts have role='employee' and no access_role.
+  // The owner/admin account is not an employee and never appears in the
+  // employee directory, payroll, absence counts or reports. HR and manager
+  // accounts are real staff employees, so their profiles are included.
   const clauses: string[] = [
-    `(u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
+    `(u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))`,
   ]
   const params: (string | number)[] = []
 
@@ -193,15 +193,16 @@ export async function listEmployees(options: { search?: string; department?: str
 }
 
 /**
- * Active employees who are not a staff account. Team lists (absent, still
- * working, late ranking) must never include the owner's own record.
+ * Active employees who are not the owner account. Team lists (absent, still
+ * working, late ranking) must never include the owner's own record, but HR
+ * and manager profiles are real employees and stay in these lists.
  */
 export async function listTeamEmployees(): Promise<Employee[]> {
   return all<Employee>(
     `SELECT e.* FROM employees e
      LEFT JOIN users u ON u.id = e.user_id
      WHERE e.status = 'active'
-       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
+       AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))
      ORDER BY e.employee_code`,
   )
 }
@@ -267,7 +268,7 @@ export async function countPendingSync(employeeId?: string): Promise<number> {
          JOIN employees e ON e.id = a.employee_id
          LEFT JOIN users u ON u.id = e.user_id
          WHERE a.sync_status = 'pending'
-           AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
+           AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))`,
       )
   return row?.count ?? 0
 }
@@ -666,7 +667,7 @@ export async function listAttendanceLog(options: {
      JOIN employees e ON e.id = a.employee_id
      LEFT JOIN users u ON u.id = e.user_id
      WHERE ${clauses.join(' AND ')}
-       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
+       AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))
      ORDER BY a.server_time DESC
      LIMIT ${options.limit ?? 300}`,
     params,
@@ -720,7 +721,7 @@ export async function listDayAttendance(workDate: string = toWorkDate()): Promis
      JOIN employees e ON e.id = a.employee_id
      LEFT JOIN users u ON u.id = e.user_id
      WHERE a.work_date = ?
-       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
+       AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))
      ORDER BY a.server_time DESC`,
     [workDate],
   )
@@ -734,7 +735,7 @@ export async function listReviewQueue(limit = 100): Promise<LiveEvent[]> {
      JOIN employees e ON e.id = a.employee_id
      LEFT JOIN users u ON u.id = e.user_id
      WHERE a.review_status = 'pending'
-       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))
+       AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))
      ORDER BY a.work_date DESC, a.server_time DESC
      LIMIT ${limit}`,
   )
@@ -837,7 +838,7 @@ export async function countFlaggedEvents(start: string, end: string): Promise<nu
      LEFT JOIN users u ON u.id = e.user_id
      WHERE a.verification = 'flagged'
        AND a.work_date BETWEEN ? AND ?
-       AND (u.role IS NULL OR (u.role = 'employee' AND COALESCE(u.access_role, '') = ''))`,
+       AND (u.role IS NULL OR (u.role <> 'boss' AND COALESCE(u.access_role, '') <> 'admin'))`,
     [start, end],
   )
   return row?.count ?? 0

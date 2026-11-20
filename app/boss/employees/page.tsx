@@ -3,12 +3,13 @@ import { ChevronRight, Search, UserPlus, Users } from "lucide-react";
 import Avatar from "@/components/avatar";
 import StatusBadge from "@/components/status-badge";
 import { getEmployeeDirectory, listDepartments } from "@/lib/queries";
+import { getEmployeeAccountRole } from "@/lib/employees";
 import { formatPkr } from "@/lib/rules";
 import { formatStamp12 } from "@/lib/time";
 import { requireHr } from "@/lib/session";
 
 export default async function EmployeesPage(props: PageProps<"/boss/employees">) {
-  await requireHr();
+  const session = await requireHr();
 
   const params = await props.searchParams;
   const search = typeof params.search === "string" ? params.search : "";
@@ -16,6 +17,9 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
   const includeInactive = params.inactive === "1";
   const departments = await listDepartments();
   const rows = await getEmployeeDirectory({ search: search || undefined, department, includeInactive });
+  const staffRoles = new Map(
+    await Promise.all(rows.map(async (row) => [row.id, await getEmployeeAccountRole(row.id)] as const)),
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6">
@@ -108,6 +112,11 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
                       <div>
                         <p className="font-semibold text-slate-800">
                           {employee.full_name}
+                          {staffRoles.get(employee.id) && (
+                            <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 align-middle text-[10px] font-semibold text-blue-900 ring-1 ring-blue-200">
+                              {staffRoles.get(employee.id) === "admin" ? "Owner" : "Staff"}
+                            </span>
+                          )}
                           {employee.status === "inactive" && (
                             <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 align-middle text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
                               Inactive
@@ -131,7 +140,11 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
                     <span className="text-amber-600">{employee.lateDaysThisMonth}</span> /{" "}
                     <span className="text-rose-600">{employee.absentDaysThisMonth}</span>
                   </td>
-                  <td className="py-3 pr-3 text-slate-700">{formatPkr(employee.monthly_salary)}</td>
+                  <td className="py-3 pr-3 text-slate-700">
+                    {session.role === "admin" || !staffRoles.get(employee.id)
+                      ? formatPkr(employee.monthly_salary)
+                      : "—"}
+                  </td>
                   <td className="py-3">
                     <Link
                       href={`/boss/employees/${employee.id}`}

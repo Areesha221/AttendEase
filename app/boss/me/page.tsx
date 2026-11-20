@@ -61,6 +61,12 @@ export default async function StaffAttendancePage() {
         </p>
       </div>
 
+      {session.role === "admin" ? (
+        <p className="mt-5 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+          Attendance is optional for the owner/admin account. Any check-in you record here is kept privately and is
+          never counted in company attendance, absence lists, payroll or headcount.
+        </p>
+      ) : (
       <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="card-tight">
           <p className="stat-label">Attendance</p>
@@ -91,6 +97,7 @@ export default async function StaffAttendancePage() {
           <p className="text-[11px] text-slate-500">overtime: {formatHours(summary.overtimeHours)}</p>
         </div>
       </section>
+      )}
 
       <section className="mt-5">
         {checkIn && checkOut ? (

@@ -5,6 +5,7 @@
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import { get } from '@/lib/db'
 import {
   SESSION_COOKIE,
   SESSION_MAX_AGE_SECONDS,
@@ -33,7 +34,16 @@ export async function deleteSession(): Promise<void> {
 /** Current session or null. Memoized per render pass. */
 export const getSession = cache(async (): Promise<SessionPayload | null> => {
   const store = await cookies()
-  return verifyToken(store.get(SESSION_COOKIE)?.value)
+  const session = verifyToken(store.get(SESSION_COOKIE)?.value)
+  if (!session) return null
+
+  // The cookie is signed, but the account may have been deactivated or deleted
+  // after it was issued. Re-check the database so a stale cookie stops working
+  // immediately instead of lasting until it expires.
+  const user = await get<{ is_active: number }>('SELECT is_active FROM users WHERE id = ?', [session.userId])
+  if (!user || !user.is_active) return null
+
+  return session
 })
 
 /** Any signed-in user, otherwise redirect to /login. */

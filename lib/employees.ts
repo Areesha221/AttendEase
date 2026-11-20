@@ -70,6 +70,25 @@ export async function isStaffLinkedEmployee(employeeId: string): Promise<boolean
   return row.role === 'boss' || (row.access_role !== null && row.access_role !== '')
 }
 
+/**
+ * The staff role behind an employee row, if any. 'admin' means the owner
+ * account, which is not an employee and stays hidden from HR.
+ */
+export async function getEmployeeAccountRole(employeeId: string): Promise<'admin' | 'hr' | 'manager' | null> {
+  const row = await get<{ role: string; access_role: string | null }>(
+    `SELECT u.role, u.access_role
+     FROM employees e JOIN users u ON u.id = e.user_id
+     WHERE e.id = ?`,
+    [employeeId],
+  )
+  if (!row) return null
+  if (row.role === 'boss') return 'admin'
+  if (row.access_role === 'hr') return 'hr'
+  if (row.access_role === 'manager') return 'manager'
+  if (row.access_role === 'admin') return 'admin'
+  return null
+}
+
 // ---------------- create ----------------
 
 export async function createEmployeeAction(

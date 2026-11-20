@@ -91,6 +91,7 @@ export async function createStaffAction(
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
   const password = String(formData.get('password') ?? '')
   const role = String(formData.get('access_role') ?? '').trim()
+  const salaryRaw = String(formData.get('monthly_salary') ?? '').trim()
 
   const fieldErrors: Record<string, string> = {}
   if (!fullName) fieldErrors.full_name = 'Full name is required.'
@@ -101,6 +102,20 @@ export async function createStaffAction(
     fieldErrors.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
   }
   if (role !== 'hr' && role !== 'manager') fieldErrors.access_role = 'Choose HR or Manager.'
+
+  // Salary is optional: HR and manager profiles are real employees, but the
+  // admin can also set the amount later from the employee record.
+  let monthlySalary = 0
+  if (salaryRaw) {
+    const parsed = Number(salaryRaw)
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      fieldErrors.monthly_salary = 'Enter a valid monthly salary (0 or more).'
+    } else if (parsed > 100_000_000) {
+      fieldErrors.monthly_salary = 'That salary looks too large.'
+    } else {
+      monthlySalary = Math.round(parsed)
+    }
+  }
 
   if (Object.keys(fieldErrors).length === 0) {
     const existing = await get<{ id: string }>('SELECT id FROM users WHERE lower(email) = ?', [email])
@@ -128,8 +143,19 @@ export async function createStaffAction(
       sql: `INSERT INTO employees (id, user_id, employee_code, full_name, cnic, phone, department, job_title,
               joining_date, photo, status, monthly_salary, annual_leave_allowance, carry_forward_leave,
               consent, consent_at, created_at)
-            VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, NULL, 'active', 0, 20, 0, 1, ?, ?)`,
-      args: [employeeId, userId, employeeCode, fullName, profile.department, profile.jobTitle, now.slice(0, 10), now, now],
+            VALUES (?, ?, ?, ?, NULL, NULL, ?, ?, ?, NULL, 'active', ?, 20, 0, 1, ?, ?)`,
+      args: [
+        employeeId,
+        userId,
+        employeeCode,
+        fullName,
+        profile.department,
+        profile.jobTitle,
+        now.slice(0, 10),
+        monthlySalary,
+        now,
+        now,
+      ],
     })
   })
 
@@ -178,6 +204,48 @@ export async function setStaffStatusAction(formData: FormData): Promise<void> {
     // Kill any live session for the deactivated account by expiring its cookies
     // on the next request; the login action already blocks inactive users.
   }
+  revalidateStaff()
+}
+
+// ---------------- delete ----------------
+
+export async function deleteStaffAction(formData: FormData): Promise<void> {
+  const session = await requireAdmin()
+
+  const userId = String(formData.get('user_id') ?? '')
+  const confirm = String(formData.get('confirm') ?? '').trim().toUpperCase()
+  if (!userId || confirm !== 'DELETE') return
+  if (userId === session.userId) return // never delete your own account
+
+  const target = await get<{ id: string; email: string; access_role: string | null; role: string }>(
+    'SELECT id, email, access_role, role FROM users WHERE id = ?',
+    [userId],
+  )
+  if (!target) return
+  if (target.role === 'boss') return // the owner account is permanent
+  if (target.access_role !== 'hr' && target.access_role !== 'manager') return
+
+  const employee = await get<{ id: string }>('SELECT id FROM employees WHERE user_id = ?', [userId])
+
+  await transaction(async (tx) => {
+    if (employee) {
+      await tx.execute({ sql: 'DELETE FROM attendance WHERE employee_id = ?', args: [employee.id] })
+      await tx.execute({ sql: 'DELETE FROM leaves WHERE employee_id = ?', args: [employee.id] })
+    }
+    await tx.execute({ sql: 'DELETE FROM notifications WHERE user_id = ?', args: [userId] })
+    if (employee) {
+      await tx.execute({ sql: 'DELETE FROM employees WHERE id = ?', args: [employee.id] })
+    }
+    await tx.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [userId] })
+  })
+
+  await audit(
+    session.userId,
+    session.name,
+    'delete_staff',
+    userId,
+    `Permanently deleted ${target.access_role} account ${target.email}`,
+  )
   revalidateStaff()
 }
 
