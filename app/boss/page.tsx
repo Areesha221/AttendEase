@@ -14,10 +14,12 @@ import Avatar from "@/components/avatar";
 import LeaveDecision from "@/components/leave-decision";
 import AttendanceTrendChart from "@/components/charts/attendance-trend-chart";
 import DepartmentBarChart from "@/components/charts/department-bar-chart";
-import { TONE_CLASSES } from "@/lib/rules";
+import { TONE_CLASSES, formatPkr } from "@/lib/rules";
 import {
   getBossOverview,
+  getEmployeeByUserId,
   getMonthlyTrend,
+  getPayrollView,
   listAuditLogs,
   listDayAttendance,
   listLeaves,
@@ -37,6 +39,8 @@ export default async function BossHomePage() {
   const notifications = await listNotifications(session.userId, 3, { includeBroadcasts: true });
   const trend = await getMonthlyTrend();
   const liveFeed = (await listDayAttendance()).slice(0, 6);
+  const ownEmployee = await getEmployeeByUserId(session.userId);
+  const ownPayroll = ownEmployee ? await getPayrollView(ownEmployee.id) : null;
 
   const stats = [
     { label: "Total employees", value: overview.totalEmployees, tone: "text-slate-900" },
@@ -101,6 +105,26 @@ export default async function BossHomePage() {
             <p className="text-lg font-bold text-slate-900">{overview.pendingSyncEvents}</p>
           </div>
         </div>
+        {ownPayroll && (
+          <div className="card-tight flex items-center gap-3">
+            <Wallet className="h-5 w-5 text-blue-800" />
+            <div className="min-w-0">
+              <p className="stat-label">My estimated net salary</p>
+              <p className="text-lg font-bold text-slate-900">
+                {formatPkr(ownPayroll.payroll.estimatedNet)}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {formatPkr(ownPayroll.payroll.monthlySalary)} monthly
+                {ownPayroll.payroll.totalDeduction > 0
+                  ? ` · deduction ${formatPkr(ownPayroll.payroll.totalDeduction)}`
+                  : " · no deductions"}
+              </p>
+            </div>
+            <Link href="/boss/me" className="ml-auto text-xs font-semibold text-blue-900 hover:text-blue-950">
+              Details
+            </Link>
+          </div>
+        )}
       </section>
 
       <section className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">

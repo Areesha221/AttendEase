@@ -50,6 +50,13 @@ export async function decideAttendanceReviewAction(formData: FormData): Promise<
   )
   if (!event) return
 
+  // Nobody may approve or reject their own attendance. Otherwise HR or a
+  // manager could clear their own flagged selfie / GPS record. The owner
+  // account keeps the override, but its events never appear in this queue.
+  if (session.role !== 'admin' && session.employeeId && event.employee_id === session.employeeId) {
+    return
+  }
+
   // Anything the system put in the review queue is reviewable (flagged,
   // outside-office, late offline sync — or already decided).
   const needsReview =

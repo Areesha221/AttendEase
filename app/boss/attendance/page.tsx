@@ -17,7 +17,7 @@ const FILTERS = [
 ] as const;
 
 export default async function AttendanceMonitorPage(props: PageProps<"/boss/attendance">) {
-  await requireStaff();
+  const session = await requireStaff();
 
   const params = await props.searchParams;
   const today = toWorkDate();
@@ -116,6 +116,10 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
             outside ||
             event.sync_status === "pending";
           const reviewed = event.review_status === "approved" || event.review_status === "rejected";
+          // HR and managers must never decide on their own attendance. The
+          // server action enforces this too; hiding the buttons keeps it clear.
+          const ownEvent = Boolean(session.employeeId) && event.employee_id === session.employeeId;
+          const canReview = session.role === "admin" || !ownEvent;
           const reviewTone =
             event.review_status === "approved"
               ? TONE_CLASSES.green
@@ -208,11 +212,22 @@ export default async function AttendanceMonitorPage(props: PageProps<"/boss/atte
                       <summary className="cursor-pointer text-[11px] font-semibold text-blue-900">
                         Change decision
                       </summary>
-                      <AttendanceReview eventId={event.id} />
+                      {canReview ? (
+                        <AttendanceReview eventId={event.id} />
+                      ) : (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          You cannot change a decision on your own attendance.
+                        </p>
+                      )}
                     </details>
                   </div>
                 )}
-                {needsReview && !reviewed && <AttendanceReview eventId={event.id} />}
+                {needsReview && !reviewed && canReview && <AttendanceReview eventId={event.id} />}
+                {needsReview && !reviewed && !canReview && (
+                  <p className="mt-2 text-[11px] font-medium text-slate-500">
+                    Your own attendance cannot be approved or rejected by you. Ask the administrator to review it.
+                  </p>
+                )}
               </div>
             </article>
           );

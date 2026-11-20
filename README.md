@@ -23,6 +23,7 @@ items exist and which server actions succeed; every page and action re-checks th
 | Leave approvals | ✅ | ✅ | ✅ |
 | Attendance Q&A | ✅ | ✅ | ✅ |
 | Add / edit / deactivate employees | ✅ | ✅ | — |
+| View staff salaries (read-only) | ✅ | ✅ | — |
 | Reset an employee password | ✅ | ✅ | — |
 | Entrance gate screen + require-code switch | ✅ | ✅ | — |
 | Company reports, payroll and CSV export | ✅ | — | ✅ |
@@ -44,6 +45,11 @@ profiles appear in the employee directory, payroll, attendance monitor and repor
 badge; only the owner/admin record is hidden from staff views. A staff member can only ever capture
 attendance for their own account. Attendance is optional for the owner/admin account and is never
 counted in company attendance, absence lists, payroll or headcount.
+
+Attendance decisions cannot be self-approved: HR and managers never see Approve/Reject controls on their
+own events, and the server rejects such a decision even if it is submitted directly. Salary estimates
+follow the same rule as employees, with an owner concession: the boss has no absence deduction and pays
+half the normal late penalty.
 
 Staff accounts are created by the admin from **Staff accounts → Add a staff account**, with an optional
 monthly salary. Deactivating an account blocks sign-in immediately; deleting an HR/manager account

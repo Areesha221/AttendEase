@@ -262,6 +262,7 @@ export type PayrollBreakdown = {
   workDaysPerMonth: number
   dailyRate: number
   lateCount: number
+  latePenaltyRate: number
   lateTotal: number
   absentDays: number
   absenceTotal: number
@@ -273,6 +274,10 @@ export type PayrollBreakdown = {
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100
+
+// Owner concession: the boss is not required to mark attendance, so absence
+// days are not deducted and the late penalty is halved.
+export const OWNER_LATE_PENALTY_FACTOR = 0.5
 
 /** Transparent, explainable payroll estimate (never auto-finalized). */
 export function computePayroll(input: PayrollInput): PayrollBreakdown {
@@ -288,6 +293,7 @@ export function computePayroll(input: PayrollInput): PayrollBreakdown {
     workDaysPerMonth: input.workDaysPerMonth,
     dailyRate: round2(dailyRate),
     lateCount: input.lateCount,
+    latePenaltyRate: round2(input.latePenalty),
     lateTotal,
     absentDays: input.absentDays,
     absenceTotal,

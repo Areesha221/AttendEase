@@ -18,6 +18,7 @@ import {
   computePayroll,
   evaluateDay,
   summarizeMonth,
+  OWNER_LATE_PENALTY_FACTOR,
   type AttendanceEvent,
   type DayEvaluation,
   type DayStatus,
@@ -364,6 +365,16 @@ export async function getPayrollView(employeeId: string, monthAnchor: string = t
   const settings = await getSettings()
   const { summary, monthStart, monthEnd } = await getMonthEvaluations(employeeId, monthAnchor)
 
+  // The owner/admin does not have to mark attendance, so the payroll estimate
+  // must not punish missing days. Late penalties stay, but at half rate.
+  const account = employee.user_id
+    ? await get<{ role: string; access_role: string | null }>(
+        'SELECT role, access_role FROM users WHERE id = ?',
+        [employee.user_id],
+      )
+    : undefined
+  const isOwner = account?.role === 'boss' || account?.access_role === 'admin'
+
   const unpaidRow = await get<{ days: number }>(
     `SELECT COALESCE(SUM(days), 0) AS days FROM leaves
      WHERE employee_id = ? AND status = 'approved' AND type = 'unpaid'
@@ -382,9 +393,9 @@ export async function getPayrollView(employeeId: string, monthAnchor: string = t
     monthlySalary: employee.monthly_salary,
     workDaysPerMonth: settings.work_days_per_month,
     lateCount: summary.lateDays,
-    latePenalty: settings.late_penalty,
-    absentDays: summary.absentDays,
-    absenceDeductionDays: settings.absence_deduction_days,
+    latePenalty: isOwner ? settings.late_penalty * OWNER_LATE_PENALTY_FACTOR : settings.late_penalty,
+    absentDays: isOwner ? 0 : summary.absentDays,
+    absenceDeductionDays: isOwner ? 0 : settings.absence_deduction_days,
     unpaidLeaveDays,
     unpaidLeaveDeductionDays: settings.unpaid_leave_deduction_days,
     bonusAmount: Math.max(perfectBonus, noLateBonus),

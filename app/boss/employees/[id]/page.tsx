@@ -45,7 +45,9 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
   if (accountRole === "admin" && session.role !== "admin") notFound();
   const staffLinked = accountRole !== null;
   const canManage = session.role === "admin" || !staffLinked;
-  const canSeeSalary = session.role === "admin" || !staffLinked;
+  // HR runs the employee records, so staff salaries are readable there. Only
+  // the administrator can edit them or reset the staff login.
+  const canSeeSalary = session.role === "admin" || session.role === "hr" || !staffLinked;
 
   const params = await props.searchParams;
   const requested = typeof params.month === "string" ? params.month : "";
@@ -137,7 +139,7 @@ export default async function EmployeeDetailPage(props: PageProps<"/boss/employe
 
       {!canManage && staffLinked && (
         <p className="mt-3 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-          This is a staff account. Only the administrator can change its details, salary or password.
+          This is a staff account. Only the administrator can change its details or reset its password.
         </p>
       )}
 

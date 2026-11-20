@@ -220,7 +220,7 @@ export default async function EmployeeHomePage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">
-                    Late penalty ({payroll.payroll.lateCount} × {settings.late_penalty})
+                    Late penalty ({payroll.payroll.lateCount} × {payroll.payroll.latePenaltyRate})
                   </span>
                   <span className="font-semibold text-rose-600">
                     − Rs. {payroll.payroll.lateTotal.toLocaleString("en-PK")}

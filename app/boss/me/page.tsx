@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarCheck, CheckCircle2, Clock, MapPin } from "lucide-react";
+import { ArrowLeft, CalendarCheck, CheckCircle2, Clock, MapPin, Wallet } from "lucide-react";
 import SelfieCapture from "@/components/selfie-capture";
 import StatusBadge from "@/components/status-badge";
-import { getEmployeeByUserId, getEventsForDate, getMonthEvaluations, getSettings } from "@/lib/queries";
-import { eventClock } from "@/lib/rules";
+import {
+  getEmployeeByUserId,
+  getEventsForDate,
+  getMonthEvaluations,
+  getPayrollView,
+  getSettings,
+} from "@/lib/queries";
+import { eventClock, formatPkr } from "@/lib/rules";
 import { formatDateHuman, formatHours, formatTime12, monthLabel, toWorkDate, weekdayName } from "@/lib/time";
 import { requireStaff } from "@/lib/session";
 
@@ -35,6 +41,7 @@ export default async function StaffAttendancePage() {
   const checkOut = events.find((event) => event.type === "check_out") ?? null;
 
   const { days, summary } = await getMonthEvaluations(employee.id, workDate);
+  const payroll = await getPayrollView(employee.id, workDate);
   const recent = days
     .filter((day) => day.workDate <= workDate)
     .slice(-10)
@@ -98,6 +105,57 @@ export default async function StaffAttendancePage() {
         </div>
       </section>
       )}
+
+      <section className="mt-5 card">
+        <p className="section-title flex items-center gap-2">
+          <Wallet className="h-3.5 w-3.5" /> My salary · {monthLabel(workDate)}
+        </p>
+        {payroll ? (
+          <div className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Monthly salary</span>
+              <span className="font-semibold text-slate-900">{formatPkr(payroll.payroll.monthlySalary)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Daily rate ({payroll.payroll.workDaysPerMonth} days)</span>
+              <span className="font-semibold text-slate-900">{formatPkr(payroll.payroll.dailyRate)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">
+                Late penalty ({payroll.payroll.lateCount} × {formatPkr(payroll.payroll.latePenaltyRate)})
+              </span>
+              <span className="font-semibold text-rose-600">− {formatPkr(payroll.payroll.lateTotal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Absence deduction ({payroll.payroll.absentDays} days)</span>
+              <span className="font-semibold text-rose-600">− {formatPkr(payroll.payroll.absenceTotal)}</span>
+            </div>
+            {payroll.payroll.unpaidLeaveTotal > 0 && (
+              <div className="flex justify-between">
+                <span className="text-slate-500">Unpaid leave ({payroll.unpaidLeaveDays} days)</span>
+                <span className="font-semibold text-rose-600">
+                  − {formatPkr(payroll.payroll.unpaidLeaveTotal)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-slate-500">Bonus (if approved)</span>
+              <span className="font-semibold text-emerald-600">+ {formatPkr(payroll.payroll.bonusAmount)}</span>
+            </div>
+            <div className="flex justify-between border-t border-slate-200 pt-2 sm:col-span-2">
+              <span className="font-semibold text-slate-700">Estimated net</span>
+              <span className="font-bold text-slate-900">{formatPkr(payroll.payroll.estimatedNet)}</span>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-slate-500">No salary is set on this profile yet.</p>
+        )}
+        <p className="mt-3 rounded-lg bg-slate-50 p-2 text-[11px] text-slate-500">
+          Estimated only — pending approval. Approved, entitled leave is never penalised as absence.
+          {session.role === "admin" &&
+            " Owner concession: absence is not deducted and the late penalty is halved."}
+        </p>
+      </section>
 
       <section className="mt-5">
         {checkIn && checkOut ? (

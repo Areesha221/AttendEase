@@ -9,7 +9,7 @@ import { formatStamp12 } from "@/lib/time";
 import { requireHr } from "@/lib/session";
 
 export default async function EmployeesPage(props: PageProps<"/boss/employees">) {
-  const session = await requireHr();
+  await requireHr();
 
   const params = await props.searchParams;
   const search = typeof params.search === "string" ? params.search : "";
@@ -140,11 +140,7 @@ export default async function EmployeesPage(props: PageProps<"/boss/employees">)
                     <span className="text-amber-600">{employee.lateDaysThisMonth}</span> /{" "}
                     <span className="text-rose-600">{employee.absentDaysThisMonth}</span>
                   </td>
-                  <td className="py-3 pr-3 text-slate-700">
-                    {session.role === "admin" || !staffRoles.get(employee.id)
-                      ? formatPkr(employee.monthly_salary)
-                      : "—"}
-                  </td>
+                  <td className="py-3 pr-3 text-slate-700">{formatPkr(employee.monthly_salary)}</td>
                   <td className="py-3">
                     <Link
                       href={`/boss/employees/${employee.id}`}

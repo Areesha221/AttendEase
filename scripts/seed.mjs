@@ -26,7 +26,7 @@ const DB_PATH = process.env.ATTENDANCE_DB_PATH ?? path.join(root, 'data', 'atten
 const SCHEMA_PATH = path.join(root, 'lib', 'schema.sql')
 
 const TZ = 'Asia/Karachi'
-const OFFICE = { name: 'Head Office — Karachi', lat: 24.8607, lng: 67.0011, radius: 100 }
+const OFFICE = { name: 'Head Office - Faisalabad', lat: 31.4187, lng: 73.0791, radius: 100 }
 const POLICY = {
   workStart: '09:00',
   workEnd: '17:00',
